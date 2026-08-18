@@ -1,14 +1,8 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { environment } from '../../../environments/environment';
+import { filiereLabel } from '../../core/utils/filiere.util';
 
 function getSubdomain(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -20,63 +14,67 @@ function getSubdomain(): string {
 @Component({
   selector: 'app-public-brochure',
   standalone: true,
-  imports: [CommonModule, NzCardModule, NzButtonModule, NzIconModule, NzTableModule, NzGridModule, NzEmptyModule, NzSpinModule],
+  imports: [CommonModule],
   template: `
-    <div class="page-container">
+    <div class="min-h-screen bg-bg-light">
       @if (loading()) {
-        <div style="text-align:center; padding:60px;"><nz-spin nzSize="large"></nz-spin></div>
+        <div class="flex items-center justify-center py-24"><span class="material-symbols-outlined text-3xl text-muted animate-spin">progress_activity</span></div>
       }
 
       @if (ecole()) {
-        <nz-card style="background: linear-gradient(135deg, #431407, #c2410c); color:white; text-align:center; margin-bottom:24px; border:none;">
-          <h1 style="font-size:28px; margin-bottom:8px; color:white;">{{ ecole()?.nom }}</h1>
-          <p style="opacity:0.9;">{{ ecole()?.description }}</p>
-          <p style="opacity:0.8; margin-top:8px; font-size:14px;">
-            {{ ecole()?.adresse }} | {{ ecole()?.telephone }} | {{ ecole()?.email }}
-          </p>
-        </nz-card>
+        <div class="max-w-4xl mx-auto px-4 py-10">
+          <div style="padding:32px;text-align:center;color:var(--color-bg);margin-bottom:20px;background:var(--color-accent-800)">
+            <h1 style="color:var(--color-bg);margin-bottom:8px">{{ ecole()?.nom }}</h1>
+            <p style="opacity:0.9;margin:0">{{ ecole()?.description }}</p>
+            <p style="opacity:0.8;margin:8px 0 0;font-size:13px">{{ ecole()?.adresse }} · {{ ecole()?.telephone }} · {{ ecole()?.email }}</p>
+          </div>
 
-        <nz-card style="margin-bottom:24px;" nzTitle="Filières proposées">
-          @if (ecole()?.filieres?.length) {
-            <div nz-row [nzGutter]="[16, 16]">
-              @for (f of ecole()?.filieres; track f.id) {
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
-                  <div style="padding:16px; border:1px solid #e5e7eb; border-radius:8px;">
-                    <h3 style="color:#c2410c;">{{ f.nom }}</h3>
-                    <p style="font-size:13px; color:#6b7280;">{{ f.description }}</p>
+          <div class="gs-panel"><div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Filières proposées</h3></div><div class="gs-panel-body">
+            @if (ecole()?.filieres?.length) {
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                @for (f of ecole()?.filieres; track f.id) {
+                  <div style="padding:16px;border:1px solid var(--color-divider)">
+                    <h4 style="color:var(--color-accent);margin-bottom:4px">{{ f.nom }}</h4>
+                    <p class="text-xs text-muted">{{ f.description }}</p>
                   </div>
+                }
+              </div>
+            } @else {
+              <div class="table-empty">Aucune filière disponible</div>
+            }
+          </div></div>
+
+          <div class="gs-panel" style="margin-bottom:20px">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Classes et frais de scolarité</h3></div>
+            <div class="gs-panel-body">
+              @if (ecole()?.classes?.length) {
+                <div style="overflow-x:auto">
+                  <table class="table">
+                    <thead><tr><th>Classe</th><th>Niveau</th><th>Filière</th><th>Frais</th></tr></thead>
+                    <tbody>
+                      @for (c of ecole()?.classes || []; track c.id) {
+                        <tr><td style="font-weight:500">{{ c.nom }}</td><td>{{ c.niveau }}</td><td>{{ filiereLabel(c) }}</td><td style="font-weight:500">{{ getTarif(c.id) }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
+              } @else {
+                <div class="table-empty">Aucune classe disponible</div>
               }
             </div>
-          } @else {
-            <nz-empty nzDescription="Aucune filière disponible"></nz-empty>
-          }
-        </nz-card>
+          </div>
 
-        <nz-card style="margin-bottom:24px;" nzTitle="Classes et frais de scolarité">
-          @if (ecole()?.classes?.length) {
-            <nz-table #classeTable [nzData]="ecole()?.classes || []" [nzPageSize]="50" nzSize="small">
-              <thead><tr><th>Classe</th><th>Niveau</th><th>Filière</th><th>Frais</th></tr></thead>
-              <tbody>
-                @for (c of classeTable.data; track c.id) {
-                  <tr><td>{{ c.nom }}</td><td>{{ c.niveau }}</td><td>{{ c.filiere?.nom }}</td><td>{{ getTarif(c.id) }}</td></tr>
-                }
-              </tbody>
-            </nz-table>
-          } @else {
-            <nz-empty nzDescription="Aucune classe disponible"></nz-empty>
-          }
-        </nz-card>
-
-        <div style="text-align:center; margin-top:24px;">
-          <button nz-button nzType="primary" (click)="downloadPdf()"><span nz-icon nzType="download"></span> Télécharger la brochure (PDF)</button>
-          <button nz-button style="margin-left:12px;" (click)="print()"><span nz-icon nzType="printer"></span> Imprimer</button>
+          <div class="flex justify-center gap-3">
+            <button (click)="downloadPdf()" class="btn btn-primary"><span class="material-symbols-outlined" style="font-size:18px">download</span> Télécharger la brochure (PDF)</button>
+            <button (click)="print()" class="btn btn-secondary"><span class="material-symbols-outlined" style="font-size:18px">print</span> Imprimer</button>
+          </div>
         </div>
       }
     </div>
   `,
 })
 export class PublicBrochureComponent implements OnInit {
+  filiereLabel = filiereLabel;
   private http = inject(HttpClient);
 
   ecole = signal<any>(null);

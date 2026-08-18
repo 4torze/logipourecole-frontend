@@ -23,6 +23,7 @@ export interface Utilisateur {
   ecoleId?: string;
   etudiantId?: string;
   deuxFaActive?: boolean;
+  mustChangePassword?: boolean;
   derniereConnexion?: string;
   ecole?: Ecole;
 }
@@ -118,6 +119,29 @@ export interface AuthResponse {
   token: string;
   requires2fa?: boolean;
   message?: string;
+}
+
+export interface CreateUserResponse {
+  user: Utilisateur;
+  temporaryPassword: string;
+}
+
+export interface CreateEcoleResponse {
+  ecole: Ecole;
+  dg: Utilisateur;
+  temporaryPassword: string;
+}
+
+export interface SuperAdminStats {
+  totalEcoles: number;
+  ecolesActives: number;
+  ecolesBloquees: number;
+  totalUsers: number;
+  totalEtudiants: number;
+  revenuActif: number;
+  repartitionAbonnement: { statut: string; total: number }[];
+  evolutionInscriptions: { mois: string; total: number }[];
+  topEcoles: { id: string; nom: string; sousDomaine: string; _count: { utilisateurs: number; etudiants: number } }[];
 }
 
 export interface PaginatedResponse<T> {

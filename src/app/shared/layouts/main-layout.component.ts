@@ -6,7 +6,6 @@ import { AuthService } from '../../core/services/auth.service';
 import { RoleUtilisateur } from '../../core/models';
 import { DsiTabService } from '../../core/services/dsi-tab.service';
 import { SuperAdminTabService } from '../../core/services/super-admin-tab.service';
-import { environment } from '../../../environments/environment';
 import { NotificationsBellComponent } from '../components/notifications-bell.component';
 
 interface NavItem {
@@ -25,61 +24,52 @@ interface NavItem {
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
     NotificationsBellComponent,
   ],
+  styles: [`
+    .gs-nav-link { display:flex; align-items:center; gap:12px; padding:11px 24px; font-size:14px; font-weight:600; text-decoration:none; color:var(--color-text); border-left:3px solid transparent; background:none; border-top:none; border-right:none; border-bottom:none; width:100%; text-align:left; cursor:pointer; font-family:var(--font-body); }
+    .gs-nav-link:hover { background:color-mix(in srgb, var(--color-text) 5%, transparent); }
+    .gs-nav-link.active { color:var(--color-accent); border-left-color:var(--color-accent); }
+    .gs-mark { width:7px; height:7px; background:transparent; flex:none; border-radius:50%; }
+    .gs-nav-link.active .gs-mark { background:var(--color-accent); }
+  `],
   template: `
-    <div class="flex h-screen overflow-hidden">
+    <div style="display:flex;min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);height:100vh;overflow:hidden">
+
       <!-- Sidebar -->
       <aside
-        class="fixed inset-y-0 left-0 z-50 w-[280px] bg-slate-950 text-white flex flex-col transition-transform duration-300 lg:relative"
+        class="fixed inset-y-0 left-0 z-50 lg:relative lg:translate-x-0"
+        style="width:280px;overflow:hidden;flex:none;border-right:2px solid var(--color-divider);background:var(--color-surface);display:flex;flex-direction:column;transition:transform .2s, width .2s"
         [class.-translate-x-full]="siderCollapsed"
         [class.translate-x-0]="!siderCollapsed"
+        [class.lg:w-0]="siderCollapsed"
+        [class.lg:overflow-hidden]="siderCollapsed"
       >
         <!-- Sidebar Header -->
-        <div class="p-6 bg-slate-900/80 flex flex-col items-start gap-1 border-b border-white/5">
-          @if (authService.currentUser()?.ecole?.logoUrl && logoLoaded()) {
-            <img [src]="ecoleLogoUrl()" alt="Logo" class="w-12 h-12 object-contain rounded-lg mb-1" (error)="logoLoaded.set(false)" />
-          } @else {
-            <div class="bg-primary p-2 rounded-lg mb-1">
-              <span class="material-symbols-outlined text-white text-[28px]">menu_book</span>
-            </div>
-          }
-          <h2 class="text-lg font-bold text-white leading-none tracking-tight">{{ authService.currentUser()?.ecole?.nom || 'LogiPourEcole' }}</h2>
+        <div style="height:64px;box-sizing:border-box;padding:0 24px;border-bottom:2px solid var(--color-divider);display:flex;flex-direction:column;justify-content:center;white-space:nowrap">
+          <span style="display:block;font-family:var(--font-heading);font-weight:800;font-size:18px;letter-spacing:-0.015em">{{ authService.currentUser()?.ecole?.nom || 'RANIAG' }}</span>
           @if (authService.currentUser()?.ecole) {
-            <p class="text-xs text-slate-400 uppercase tracking-wider">{{ authService.currentUser()?.ecole?.sousDomaine }}.logipourecole.com</p>
+            <span style="font-size:11px;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ authService.currentUser()?.ecole?.sousDomaine }}.raniag.com</span>
           }
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <nav style="flex:1;padding:16px 0;display:flex;flex-direction:column;white-space:nowrap;min-width:220px;overflow-y:auto">
           @for (item of visibleNavItems(); track item.label) {
             @if (item.dsiTab) {
-              <button
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left"
-                [class]="isOnDsiTab(item.dsiTab) ? 'bg-primary text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-white'"
-                (click)="goToDsiTab(item.dsiTab)"
-              >
-                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+              <button class="gs-nav-link" [class.active]="isOnDsiTab(item.dsiTab)" (click)="goToDsiTab(item.dsiTab)">
+                <span class="gs-mark"></span>
+                <span class="material-symbols-outlined" style="font-size:18px">{{ item.icon }}</span>
                 <span class="truncate">{{ item.label }}</span>
               </button>
             } @else if (item.saTab) {
-              <button
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left"
-                [class]="isOnSuperAdminTab(item.saTab) ? 'bg-primary text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-white'"
-                (click)="goToSuperAdminTab(item.saTab)"
-              >
-                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+              <button class="gs-nav-link" [class.active]="isOnSuperAdminTab(item.saTab)" (click)="goToSuperAdminTab(item.saTab)">
+                <span class="gs-mark"></span>
+                <span class="material-symbols-outlined" style="font-size:18px">{{ item.icon }}</span>
                 <span class="truncate">{{ item.label }}</span>
               </button>
             } @else {
-              <a
-                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                [routerLink]="item.route"
-                routerLinkActive="bg-primary text-white"
-                [routerLinkActiveOptions]="{ exact: true }"
-                [class.text-slate-400]="!isRouteActive(item.route)"
-                [class.hover:bg-slate-900]="!isRouteActive(item.route)"
-                [class.hover:text-white]="!isRouteActive(item.route)"
-              >
-                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+              <a class="gs-nav-link" [routerLink]="item.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+                <span class="gs-mark"></span>
+                <span class="material-symbols-outlined" style="font-size:18px">{{ item.icon }}</span>
                 <span class="truncate">{{ item.label }}</span>
               </a>
             }
@@ -89,57 +79,36 @@ interface NavItem {
 
       <!-- Overlay for mobile -->
       @if (!siderCollapsed) {
-        <div class="fixed inset-0 bg-slate-900/40 z-40 lg:hidden" (click)="siderCollapsed = true"></div>
+        <div class="fixed inset-0 z-40 lg:hidden" style="background:color-mix(in srgb, var(--color-neutral-900) 40%, transparent)" (click)="siderCollapsed = true"></div>
       }
 
       <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
         <!-- Header -->
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30 shrink-0">
-          <div class="flex items-center gap-4">
-            <button
-              class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              (click)="siderCollapsed = !siderCollapsed"
-            >
-              <span class="material-symbols-outlined">{{ siderCollapsed ? 'menu' : 'menu_open' }}</span>
+        <header class="nav" style="justify-content:space-between;background:var(--color-bg);position:sticky;top:0;z-index:30;flex:none;height:64px;box-sizing:border-box">
+          <div style="display:flex;align-items:center;gap:16px">
+            <button class="btn btn-icon btn-secondary" (click)="siderCollapsed = !siderCollapsed" aria-label="Basculer la navigation">
+              <span class="material-symbols-outlined" style="font-size:18px">{{ siderCollapsed ? 'menu' : 'menu_open' }}</span>
             </button>
-            <h1 class="text-lg font-bold text-slate-900 truncate">{{ pageTitle() }}</h1>
+            <h1 style="font-size:20px;margin:0" class="truncate">{{ pageTitle() }}</h1>
           </div>
-          <div class="flex items-center gap-4">
+          <div style="display:flex;align-items:center;gap:16px;position:relative">
             <app-notifications-bell></app-notifications-bell>
-            <div class="h-6 w-px bg-slate-200"></div>
-            <!-- User Dropdown -->
-            <div class="relative" data-user-dropdown>
-              <button
-                class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                (click)="userMenuOpen = !userMenuOpen"
-              >
-                <div class="h-9 w-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                  {{ userInitials() }}
-                </div>
-                <div class="text-left hidden sm:block">
-                  <p class="text-xs font-bold text-slate-900">{{ authService.currentUser()?.prenom }} {{ authService.currentUser()?.nom }}</p>
-                  <p class="text-[10px] text-slate-500">{{ authService.currentUser()?.role }}</p>
-                </div>
-                <span class="material-symbols-outlined text-slate-400 text-xl">expand_more</span>
+            <span class="tag tag-outline">{{ authService.currentUser()?.role }}</span>
+            <div style="height:20px;width:1px;background:var(--color-divider)"></div>
+            <div style="position:relative" data-user-dropdown>
+              <button (click)="userMenuOpen = !userMenuOpen" style="display:flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-body);color:var(--color-text)">
+                <span style="width:34px;height:34px;border:1.5px solid var(--color-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:800;font-size:13px;color:var(--color-accent)">{{ userInitials() }}</span>
+                <span class="hidden sm:block" style="text-align:left">
+                  <span style="display:block;font-size:13px;font-weight:600">{{ authService.currentUser()?.prenom }} {{ authService.currentUser()?.nom }}</span>
+                </span>
+                <span class="material-symbols-outlined" style="font-size:18px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">expand_more</span>
               </button>
               @if (userMenuOpen) {
-                <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-2 animate-fade-in">
-                  <button
-                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                    (click)="goToProfile(); userMenuOpen = false"
-                  >
-                    <span class="material-symbols-outlined text-xl text-slate-400">person</span>
-                    Mon profil
-                  </button>
-                  <div class="h-px bg-slate-100 my-1"></div>
-                  <button
-                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                    (click)="logout(); userMenuOpen = false"
-                  >
-                    <span class="material-symbols-outlined text-xl text-red-400">logout</span>
-                    Déconnexion
-                  </button>
+                <div style="position:absolute;right:0;top:44px;width:200px;border:1px solid var(--color-divider);background:var(--color-bg);box-shadow:var(--shadow-md);z-index:10;display:flex;flex-direction:column">
+                  <button class="btn" style="justify-content:flex-start;border-radius:0;padding:12px 16px" (click)="goToProfile(); userMenuOpen = false">Mon profil</button>
+                  <div class="hr" style="margin:0"></div>
+                  <button class="btn" style="justify-content:flex-start;border-radius:0;padding:12px 16px;color:var(--color-accent-700)" (click)="logout(); userMenuOpen = false">Déconnexion</button>
                 </div>
               }
             </div>
@@ -147,7 +116,7 @@ interface NavItem {
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 overflow-y-auto bg-bg-light p-6 lg:p-8">
+        <main style="flex:1;overflow-y:auto">
           <router-outlet />
         </main>
       </div>
@@ -162,7 +131,6 @@ export class MainLayoutComponent {
 
   siderCollapsed = false;
   userMenuOpen = false;
-  logoLoaded = signal(true);
   currentUrl = signal(this.router.url);
 
   private navItems: NavItem[] = [
@@ -171,7 +139,11 @@ export class MainLayoutComponent {
     { label: 'Établissements', icon: 'account_balance', route: '/super-admin', roles: [RoleUtilisateur.SUPER_ADMIN], saTab: 'etablissements' },
     { label: 'Utilisateurs connectés', icon: 'groups', route: '/super-admin', roles: [RoleUtilisateur.SUPER_ADMIN], saTab: 'utilisateurs' },
     { label: "Journal d'audit", icon: 'history', route: '/super-admin', roles: [RoleUtilisateur.SUPER_ADMIN], saTab: 'audit' },
+    { label: 'Style des emails', icon: 'mail', route: '/super-admin', roles: [RoleUtilisateur.SUPER_ADMIN], saTab: 'emails' },
     { label: 'Utilisateurs', icon: 'groups', route: '/dg/utilisateurs', roles: [RoleUtilisateur.DG] },
+    { label: 'Finance', icon: 'account_balance_wallet', route: '/dg/finance', roles: [RoleUtilisateur.DG] },
+    { label: 'Élèves', icon: 'school', route: '/dg/eleves', roles: [RoleUtilisateur.DG] },
+    { label: 'Professeurs', icon: 'group', route: '/dg/professeurs', roles: [RoleUtilisateur.DG] },
     { label: 'Dashboard', icon: 'wallet', route: '/daf', roles: [RoleUtilisateur.DAF] },
     { label: 'Finance', icon: 'receipt_long', route: '/daf/finance', roles: [RoleUtilisateur.DAF] },
     { label: 'Tarifs', icon: 'payments', route: '/daf/tarifs', roles: [RoleUtilisateur.DAF] },
@@ -179,11 +151,19 @@ export class MainLayoutComponent {
     { label: 'Templates Reçu', icon: 'description', route: '/daf/recus', roles: [RoleUtilisateur.DAF, RoleUtilisateur.DG] },
     // ETUDES - items for Direction des Études only (not DSI)
     { label: 'Études', icon: 'menu_book', route: '/etudes', roles: [RoleUtilisateur.ETUDES] },
-    { label: 'Années scolaires', icon: 'calendar_month', route: '/etudes/annees-scolaires', roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DG] },
-    { label: 'Périodes', icon: 'schedule', route: '/etudes/periodes', roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DG] },
+    { label: 'Années scolaires', icon: 'calendar_month', route: '/etudes/annees-scolaires', roles: [RoleUtilisateur.ETUDES] },
+    { label: 'Périodes', icon: 'schedule', route: '/etudes/periodes', roles: [RoleUtilisateur.ETUDES] },
     { label: 'Salles', icon: 'location_on', route: '/etudes/salles', roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DG] },
-    { label: 'Emploi du temps', icon: 'schedule', route: '/etudes/emploi-du-temps', roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG] },
-    { label: 'Secrétariat', icon: 'description', route: '/secretariat', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Emploi du temps', icon: 'schedule', route: '/etudes/emploi-du-temps', roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG, RoleUtilisateur.SECRETAIRE] },
+    // Paramètres reste en dernier dans le menu DG (demande explicite).
+    { label: 'Paramètres', icon: 'settings', route: '/dg/parametres', roles: [RoleUtilisateur.DG] },
+    // Secrétariat - menus directs (pas d'onglets), demande explicite de l'utilisateur.
+    { label: 'Réunions', icon: 'groups', route: '/secretariat/reunions', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Visites & RDV', icon: 'event', route: '/secretariat/visites', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Prospects', icon: 'person_add', route: '/secretariat/prospects', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Courrier', icon: 'mail', route: '/secretariat/courrier', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Annuaire', icon: 'contacts', route: '/secretariat/annuaire', roles: [RoleUtilisateur.SECRETAIRE] },
+    { label: 'Mes tâches', icon: 'checklist', route: '/secretariat/taches', roles: [RoleUtilisateur.SECRETAIRE] },
     { label: 'Marketing', icon: 'notifications', route: '/marketing', roles: [RoleUtilisateur.MARKETING] },
     // DSI - direct menu items, each navigates to /dsi and sets the tab
     { label: 'Filières', icon: 'apps', route: '/dsi', roles: [RoleUtilisateur.DSI], dsiTab: 'filieres' },
@@ -199,11 +179,12 @@ export class MainLayoutComponent {
     { label: 'Tableau de bord', icon: 'dashboard', route: '/dashboard', roles: [RoleUtilisateur.ENSEIGNANT] },
     { label: 'Mon emploi du temps', icon: 'schedule', route: '/enseignant', roles: [RoleUtilisateur.ENSEIGNANT] },
     { label: 'Évaluations', icon: 'edit', route: '/enseignant/notes', roles: [RoleUtilisateur.ENSEIGNANT] },
-    { label: 'Absences & retards', icon: 'error', route: '/enseignant/absences', roles: [RoleUtilisateur.ENSEIGNANT] },
     { label: 'Devoirs', icon: 'description', route: '/enseignant/devoirs', roles: [RoleUtilisateur.ENSEIGNANT] },
     { label: 'Mes élèves', icon: 'groups', route: '/enseignant/mes-eleves', roles: [RoleUtilisateur.ENSEIGNANT] },
+    { label: 'Mes séances', icon: 'event_note', route: '/enseignant/seances', roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.ETUDES, RoleUtilisateur.SUPER_ADMIN] },
     { label: 'Mes notes saisies', icon: 'history', route: '/enseignant/historique-notes', roles: [RoleUtilisateur.ENSEIGNANT] },
     { label: 'Espace Étudiant', icon: 'mood', route: '/etudiant', roles: [RoleUtilisateur.ETUDIANT] },
+    { label: 'Mes devoirs', icon: 'assignment', route: '/etudiant/devoirs', roles: [RoleUtilisateur.ETUDIANT] },
   ];
 
   visibleNavItems = computed(() => {
@@ -223,13 +204,6 @@ export class MainLayoutComponent {
     });
   }
 
-  ecoleLogoUrl = computed(() => {
-    const logoUrl = this.authService.currentUser()?.ecole?.logoUrl;
-    if (!logoUrl) return '';
-    const base = environment.apiUrl.replace('/api', '');
-    return `${base}${logoUrl}`;
-  });
-
   userInitials = computed(() => {
     const u = this.authService.currentUser();
     if (!u) return '?';
@@ -245,6 +219,10 @@ export class MainLayoutComponent {
       return found ? found.label : 'Super Admin';
     }
     if (url.includes('/dg/utilisateurs')) return 'Gestion des utilisateurs';
+    if (url.includes('/dg/finance')) return 'Finance';
+    if (url.includes('/dg/eleves')) return 'Élèves';
+    if (url.includes('/dg/professeurs')) return 'Professeurs';
+    if (url.includes('/dg/parametres')) return 'Paramètres';
     if (url.includes('/dg')) return 'Direction Générale';
     if (url.includes('/daf/recus')) return 'Templates de Reçu';
     if (url.includes('/daf/tarifs')) return 'Tarifs';
@@ -260,17 +238,27 @@ export class MainLayoutComponent {
     if (url.includes('/enseignant/absences')) return 'Absences & retards';
     if (url.includes('/enseignant/devoirs')) return 'Devoirs & soumissions';
     if (url.includes('/enseignant/mes-eleves')) return 'Mes élèves';
+    if (url.includes('/enseignant/seances')) return 'Mes séances';
     if (url.includes('/enseignant/historique-notes')) return 'Mes notes saisies';
+    if (url.includes('/seance/')) return 'Détail de la séance';
     if (url.includes('/enseignant')) return 'Mon emploi du temps';
+    if (url.includes('/secretariat/reunions')) return 'Réunions';
+    if (url.includes('/secretariat/visites')) return 'Visites & RDV';
+    if (url.includes('/secretariat/prospects')) return 'Prospects';
+    if (url.includes('/secretariat/courrier')) return 'Courrier';
+    if (url.includes('/secretariat/annuaire')) return 'Annuaire';
+    if (url.includes('/secretariat/taches')) return 'Mes tâches';
     if (url.includes('/secretariat')) return 'Secrétariat';
     if (url.includes('/marketing')) return 'Marketing';
+    if (url.includes('/dsi/classes/')) return 'Détail de la classe';
     if (url.includes('/dsi')) {
       const tab = this.dsiTabService.activeTab();
       const found = this.dsiTabService.tabs.find(t => t.key === tab);
       return found ? found.label : 'DSI';
     }
+    if (url.includes('/etudiant/devoirs')) return 'Mes devoirs';
     if (url.includes('/etudiant')) return 'Espace Étudiant';
-    return 'LogiPourEcole';
+    return 'RANIAG';
   });
 
   goToDsiTab(tab: string) {

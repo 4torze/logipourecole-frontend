@@ -3,59 +3,61 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
+import { AlertService } from '../../core/services/alert.service';
 import { PaginationComponent } from '../../shared/components/pagination.component';
+import { filiereLabel } from '../../core/utils/filiere.util';
 
 @Component({
   selector: 'app-dsi-affectations',
   standalone: true,
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
-    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-6">
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="font-bold text-lg text-slate-900">Affectations enseignants</h3>
-        <button (click)="showForm.set(true)" class="flex items-center gap-2 h-10 px-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm">
-          <span class="material-symbols-outlined text-xl">add</span> Affecter un enseignant
+    <div class="gs-panel"><div class="gs-panel-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h3 style="margin:0">Affectations enseignants</h3>
+        <button (click)="showForm.set(true)" class="btn btn-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span> Affecter un enseignant
         </button>
       </div>
-      <div class="overflow-x-auto rounded-lg border border-slate-200">
-        <table class="w-full text-sm">
-          <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-            <tr><th class="px-4 py-3 text-left font-semibold">Enseignant</th><th class="px-4 py-3 text-left font-semibold">Classe</th><th class="px-4 py-3 text-left font-semibold">Matière</th><th class="px-4 py-3 text-left font-semibold">Année</th><th class="px-4 py-3 text-left font-semibold">Actions</th></tr>
+      <div style="overflow-x:auto">
+        <table class="table">
+          <thead>
+            <tr><th>Enseignant</th><th>Classe</th><th>Matière</th><th>Année</th><th>Actions</th></tr>
           </thead>
-          <tbody class="divide-y divide-slate-50">
+          <tbody>
             @for (a of pagedAffectations(); track a.id) {
-              <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3 text-slate-700">{{ a.enseignant?.prenom }} {{ a.enseignant?.nom }}</td>
-                <td class="px-4 py-3 text-slate-600">{{ a.classe?.nom }}</td>
-                <td class="px-4 py-3 text-slate-600">{{ a.matiere?.nom }}</td>
-                <td class="px-4 py-3 text-slate-600">{{ a.anneeScolaire?.libelle }}</td>
-                <td class="px-4 py-3"><button (click)="remove(a.id)" class="p-1.5 rounded-lg hover:bg-slate-100 text-red-500"><span class="material-symbols-outlined text-lg">delete</span></button></td>
+              <tr>
+                <td>{{ a.enseignant?.prenom }} {{ a.enseignant?.nom }}</td>
+                <td>{{ a.classe?.nom }}</td>
+                <td>{{ a.matiere?.nom }}</td>
+                <td>{{ a.anneeScolaire?.libelle }}</td>
+                <td><button (click)="remove(a.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></td>
               </tr>
+            } @empty {
+              <tr><td colspan="5" class="table-empty">Aucune affectation enregistrée</td></tr>
             }
           </tbody>
         </table>
       </div>
       <app-pagination [page]="affectationPage()" [pageSize]="pageSize" [totalItems]="affectations().length" (pageChange)="affectationPage.set($event)"></app-pagination>
-    </div>
+    </div></div>
 
     @if (showForm()) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showForm.set(false)">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">Affecter un enseignant</h3>
-            <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="showForm.set(false)"><span class="material-symbols-outlined">close</span></button>
+      <div class="dialog-backdrop" (click)="showForm.set(false)">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="dialog-title">Affecter un enseignant</span>
+            <button class="btn btn-icon btn-secondary" (click)="showForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
           </div>
-          <div class="p-6 space-y-4">
-            <select [(ngModel)]="form.enseignantId" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Enseignant</option>@for (e of enseignants(); track e.id) { <option [value]="e.id">{{ e.prenom }} {{ e.nom }}</option> }</select>
-            <select [(ngModel)]="form.classeId" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Classe</option>@for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }} ({{ c.filiere?.nom || '' }})</option> }</select>
-            <select [(ngModel)]="form.matiereId" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Matière</option>@for (m of matieres(); track m.id) { <option [value]="m.id">{{ m.nom }} ({{ m.code }})</option> }</select>
-            <div class="flex gap-3">
-              <button (click)="assigner()" [disabled]="saving()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">
-                @if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-xl">add</span> }
-                Affecter
-              </button>
-              <button (click)="showForm.set(false)" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button>
-            </div>
+          <div class="field"><label>Enseignant</label><select [(ngModel)]="form.enseignantId" class="input"><option value="">Enseignant</option>@for (e of enseignants(); track e.id) { <option [value]="e.id">{{ e.prenom }} {{ e.nom }}</option> }</select></div>
+          <div class="field"><label>Classe</label><select [(ngModel)]="form.classeId" class="input"><option value="">Classe</option>@for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }} ({{ filiereLabel(c) }})</option> }</select></div>
+          <div class="field"><label>Matière</label><select [(ngModel)]="form.matiereId" class="input"><option value="">Matière</option>@for (m of matieres(); track m.id) { <option [value]="m.id">{{ m.nom }} ({{ m.code }})</option> }</select></div>
+          <div class="dialog-actions">
+            <button (click)="showForm.set(false)" class="btn btn-secondary">Annuler</button>
+            <button (click)="assigner()" [disabled]="saving()" class="btn btn-primary">
+              @if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">add</span> }
+              Affecter
+            </button>
           </div>
         </div>
       </div>
@@ -63,7 +65,9 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
   `,
 })
 export class DsiAffectationsComponent implements OnInit {
+  filiereLabel = filiereLabel;
   private http = inject(HttpClient);
+  private alertService = inject(AlertService);
 
   enseignants = signal<any[]>([]);
   classes = signal<any[]>([]);
@@ -91,7 +95,7 @@ export class DsiAffectationsComponent implements OnInit {
     this.http.get<any>(`${environment.apiUrl}/users?limit=1000`)
       .subscribe({
         next: (res) => this.enseignants.set((res.data || []).filter((u: any) => u.role === 'ENSEIGNANT' && u.statut === 'ACTIF')),
-        error: () => alert('Erreur chargement enseignants'),
+        error: () => this.alertService.error('Erreur chargement enseignants'),
       });
   }
 
@@ -113,7 +117,7 @@ export class DsiAffectationsComponent implements OnInit {
   assigner() {
     const { enseignantId, classeId, matiereId } = this.form;
     if (!enseignantId || !classeId || !matiereId) {
-      alert('Veuillez sélectionner un enseignant, une classe et une matière');
+      this.alertService.error('Veuillez sélectionner un enseignant, une classe et une matière');
       return;
     }
     this.saving.set(true);
@@ -122,22 +126,24 @@ export class DsiAffectationsComponent implements OnInit {
         next: () => {
           this.saving.set(false);
           this.showForm.set(false);
-          alert('Affectation enregistrée');
+          this.alertService.success('Affectation enregistrée');
           this.form = { enseignantId: '', classeId: '', matiereId: '' };
           this.loadAffectations();
         },
         error: (err) => {
           this.saving.set(false);
-          alert(err.error?.message || 'Erreur affectation');
+          this.alertService.error(err.error?.message || 'Erreur affectation');
         },
       });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
+    const ok = await this.alertService.confirm({ title: 'Supprimer cette affectation ?', confirmText: 'Supprimer', danger: true });
+    if (!ok) return;
     this.http.delete(`${environment.apiUrl}/etudes/affectations/${id}`)
       .subscribe({
         next: () => { this.loadAffectations(); },
-        error: (err) => alert(err.error?.message || 'Erreur suppression'),
+        error: (err) => this.alertService.error(err.error?.message || 'Erreur suppression'),
       });
   }
 }

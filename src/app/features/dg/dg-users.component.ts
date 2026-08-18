@@ -2,8 +2,10 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent } from '../../shared/components/pagination.component';
+import { CreateUserResponse } from '../../core/models';
 
 interface User {
   id: string;
@@ -20,80 +22,126 @@ interface User {
   standalone: true,
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
-    <div class="page-container">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-slate-900">Gestion des utilisateurs</h1>
-        <button (click)="openForm()" class="flex items-center gap-2 h-10 px-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm">
-          <span class="material-symbols-outlined text-xl">person_add</span> Ajouter un utilisateur
+    <div class="page-container" style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h1 style="margin:0">Gestion des utilisateurs</h1>
+        <button (click)="openForm()" class="btn btn-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">person_add</span> Ajouter un utilisateur
         </button>
       </div>
 
       @if (showForm()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showForm.set(false)">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 class="font-bold text-slate-900">Créer un utilisateur</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="showForm.set(false)"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="showForm.set(false)">
+          <div class="dialog" style="width:min(640px,100%)" (click)="$event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Créer un utilisateur</span>
+              <button class="btn btn-icon btn-secondary" (click)="showForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6 grid grid-cols-2 gap-4">
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Nom</label><input type="text" [(ngModel)]="form.nom" placeholder="Nom" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Prénom</label><input type="text" [(ngModel)]="form.prenom" placeholder="Prénom" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Email</label><input type="email" [(ngModel)]="form.email" placeholder="Email" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Téléphone</label><input type="text" [(ngModel)]="form.telephone" placeholder="Téléphone" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Rôle</label><select [(ngModel)]="form.role" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="DG">Directeur Général</option><option value="DAF">DAF (Finances)</option><!-- <option value="ETUDES">Direction des Études</option> --><option value="DSI">DSI</option><!-- <option value="SECRETAIRE">Secrétariat</option> --><!-- <option value="MARKETING">Marketing</option> --><option value="ENSEIGNANT">Enseignant</option><!-- <option value="ETUDIANT">Étudiant</option> --></select></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Mot de passe</label><input type="password" [(ngModel)]="form.motDePasse" placeholder="Min 6 caractères" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="col-span-2 flex gap-3 mt-2"><button (click)="createUser()" [disabled]="saving()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">@if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">save</span> } Créer</button><button (click)="showForm.set(false)" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button></div>
+            <p style="margin:0;font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">En tant que DG, vous créez les comptes DAF et DSI. Un mot de passe temporaire sera généré automatiquement et affiché une seule fois : à vous de le communiquer à l'utilisateur, qui devra le changer dès sa première connexion.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="field"><label>Nom</label><input type="text" [(ngModel)]="form.nom" placeholder="Nom" class="input" /></div>
+              <div class="field"><label>Prénom</label><input type="text" [(ngModel)]="form.prenom" placeholder="Prénom" class="input" /></div>
+              <div class="field"><label>Email</label><input type="email" [(ngModel)]="form.email" placeholder="Email" class="input" /></div>
+              <div class="field"><label>Téléphone</label><input type="text" [(ngModel)]="form.telephone" placeholder="Téléphone" class="input" /></div>
+              <div class="field" style="grid-column:span 2"><label>Rôle</label><select [(ngModel)]="form.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option></select></div>
+            </div>
+            <div class="dialog-actions">
+              <button (click)="showForm.set(false)" class="btn btn-secondary">Annuler</button>
+              <button (click)="createUser()" [disabled]="saving()" class="btn btn-primary">
+                @if (saving()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:16px">save</span> } Créer
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (credentials(); as c) {
+        <div class="dialog-backdrop">
+          <div class="dialog">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Utilisateur créé</span>
+              <button class="btn btn-icon btn-secondary" (click)="credentials.set(null)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            </div>
+            <div style="border-left:3px solid var(--color-accent);background:var(--color-accent-100);color:var(--color-accent-800);padding:10px 14px;font-size:13px;display:flex;gap:8px;align-items:flex-start">
+              <span class="material-symbols-outlined" style="font-size:18px">info</span>
+              Ce mot de passe ne sera plus jamais affiché. Communiquez-le à l'utilisateur ; il devra le changer à sa première connexion.
+            </div>
+            <div class="field" style="margin:0"><label>Email</label><span style="font-size:14px">{{ c.email }}</span></div>
+            <div class="field" style="margin:0">
+              <label>Mot de passe temporaire</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <code style="flex:1;font-size:13px;font-family:monospace;border:1px solid var(--color-divider);padding:8px 10px;background:var(--color-bg)">{{ c.password }}</code>
+                <button (click)="copyPassword(c.password)" class="btn btn-secondary"><span class="material-symbols-outlined" style="font-size:16px">content_copy</span>Copier</button>
+              </div>
+            </div>
+            <div class="dialog-actions">
+              <button (click)="credentials.set(null)" class="btn btn-primary">Fermer</button>
             </div>
           </div>
         </div>
       }
 
       @if (showEditForm()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showEditForm.set(false)">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 class="font-bold text-slate-900">Modifier l'utilisateur</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="showEditForm.set(false)"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="showEditForm.set(false)">
+          <div class="dialog" style="width:min(640px,100%)" (click)="$event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Modifier l'utilisateur</span>
+              <button class="btn btn-icon btn-secondary" (click)="showEditForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6 grid grid-cols-2 gap-4">
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Nom</label><input type="text" [(ngModel)]="editForm.nom" placeholder="Nom" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Prénom</label><input type="text" [(ngModel)]="editForm.prenom" placeholder="Prénom" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Email</label><input type="email" [value]="editForm.email" disabled class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-100 outline-none text-sm text-slate-500" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Téléphone</label><input type="text" [(ngModel)]="editForm.telephone" placeholder="Téléphone" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Rôle</label><select [(ngModel)]="editForm.role" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="DG">Directeur Général</option><option value="DAF">DAF (Finances)</option><!-- <option value="ETUDES">Direction des Études</option> --><option value="DSI">DSI</option><!-- <option value="SECRETAIRE">Secrétariat</option> --><!-- <option value="MARKETING">Marketing</option> --><option value="ENSEIGNANT">Enseignant</option><!-- <option value="ETUDIANT">Étudiant</option> --></select></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Statut</label><select [(ngModel)]="editForm.statut" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="ACTIF">Actif</option><option value="INACTIF">Bloqué</option></select></div>
-              <div class="col-span-2 flex gap-3 mt-2"><button (click)="updateUser()" [disabled]="editSaving()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">@if (editSaving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">save</span> } Enregistrer</button><button (click)="showEditForm.set(false)" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="field"><label>Nom</label><input type="text" [(ngModel)]="editForm.nom" placeholder="Nom" class="input" /></div>
+              <div class="field"><label>Prénom</label><input type="text" [(ngModel)]="editForm.prenom" placeholder="Prénom" class="input" /></div>
+              <div class="field"><label>Email</label><input type="email" [value]="editForm.email" disabled class="input" /></div>
+              <div class="field"><label>Téléphone</label><input type="text" [(ngModel)]="editForm.telephone" placeholder="Téléphone" class="input" /></div>
+              <div class="field"><label>Rôle</label><select [(ngModel)]="editForm.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option></select></div>
+              <div class="field"><label>Statut</label><select [(ngModel)]="editForm.statut" class="input"><option value="ACTIF">Actif</option><option value="INACTIF">Bloqué</option></select></div>
+            </div>
+            <div class="dialog-actions">
+              <button (click)="showEditForm.set(false)" class="btn btn-secondary">Annuler</button>
+              <button (click)="updateUser()" [disabled]="editSaving()" class="btn btn-primary">
+                @if (editSaving()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:16px">save</span> } Enregistrer
+              </button>
             </div>
           </div>
         </div>
       }
 
-      <div class="bg-white rounded-xl border border-slate-200 shadow-card p-6">
-        <div class="overflow-x-auto rounded-lg border border-slate-200">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-              <tr><th class="px-4 py-3 text-left font-semibold">Nom</th><th class="px-4 py-3 text-left font-semibold">Email</th><th class="px-4 py-3 text-left font-semibold">Rôle</th><th class="px-4 py-3 text-left font-semibold">Statut</th><th class="px-4 py-3 text-left font-semibold">Actions</th></tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-              @for (u of pagedUsers(); track u.id) {
-                <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3 text-slate-700">{{ u.prenom }} {{ u.nom }}</td>
-                  <td class="px-4 py-3 text-slate-600">{{ u.email }}</td>
-                  <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ u.role }}</span></td>
-                  <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [class]="u.statut === 'ACTIF' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'">{{ u.statut === 'ACTIF' ? 'Actif' : 'Bloqué' }}</span></td>
-                  <td class="px-4 py-3"><div class="flex items-center gap-2"><button (click)="editUser(u)" class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium"><span class="material-symbols-outlined text-base">edit</span>Modifier</button><button (click)="toggle(u)" [disabled]="loadingId() === u.id" class="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium" [class]="u.statut === 'ACTIF' ? 'bg-primary text-white hover:bg-primary-hover' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'"><span class="material-symbols-outlined text-base">{{ u.statut === 'ACTIF' ? 'lock' : 'lock_open' }}</span>{{ u.statut === 'ACTIF' ? 'Bloquer' : 'Débloquer' }}</button></div></td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      <div class="gs-panel">
+        <div class="gs-panel-body">
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                @for (u of pagedUsers(); track u.id) {
+                  <tr>
+                    <td>{{ u.prenom }} {{ u.nom }}</td>
+                    <td>{{ u.email }}</td>
+                    <td><span class="tag tag-neutral">{{ u.role }}</span></td>
+                    <td><span class="tag" [class]="u.statut === 'ACTIF' ? 'tag-success' : 'tag-danger'">{{ u.statut === 'ACTIF' ? 'Actif' : 'Bloqué' }}</span></td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <button (click)="editUser(u)" class="btn btn-secondary"><span class="material-symbols-outlined" style="font-size:18px">edit</span>Modifier</button>
+                        <button (click)="toggle(u)" [disabled]="loadingId() === u.id" class="btn" [class]="u.statut === 'ACTIF' ? 'btn-danger' : 'btn-secondary'">
+                          <span class="material-symbols-outlined" style="font-size:18px">{{ u.statut === 'ACTIF' ? 'lock' : 'lock_open' }}</span>{{ u.statut === 'ACTIF' ? 'Bloquer' : 'Débloquer' }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-pagination [page]="usersPage()" [pageSize]="pageSize" [totalItems]="users().length" (pageChange)="usersPage.set($event)"></app-pagination>
         </div>
-        <app-pagination [page]="usersPage()" [pageSize]="pageSize" [totalItems]="users().length" (pageChange)="usersPage.set($event)"></app-pagination>
       </div>
     </div>
   `,
 })
 export class DgUsersComponent implements OnInit {
   private http = inject(HttpClient);
+  private alertService = inject(AlertService);
 
   users = signal<User[]>([]);
   pageSize = 10;
@@ -105,42 +153,43 @@ export class DgUsersComponent implements OnInit {
   loadingId = signal<string | null>(null);
   showForm = signal(false);
   saving = signal(false);
-  form = { nom: '', prenom: '', email: '', telephone: '', role: 'ENSEIGNANT', motDePasse: '' };
+  form = { nom: '', prenom: '', email: '', telephone: '', role: 'DAF' };
+  credentials = signal<{ email: string; password: string } | null>(null);
   showEditForm = signal(false);
   editSaving = signal(false);
-  editForm = { id: '', nom: '', prenom: '', email: '', telephone: '', role: 'ENSEIGNANT', statut: 'ACTIF' as string };
+  editForm = { id: '', nom: '', prenom: '', email: '', telephone: '', role: 'DAF', statut: 'ACTIF' as string };
 
   ngOnInit() { this.load(); }
 
   openForm() {
-    this.form = { nom: '', prenom: '', email: '', telephone: '', role: 'ENSEIGNANT', motDePasse: '' };
+    this.form = { nom: '', prenom: '', email: '', telephone: '', role: 'DAF' };
     this.showForm.set(true);
   }
 
   createUser() {
     const d = this.form;
-    if (!d.nom || !d.prenom || !d.email || !d.motDePasse || !d.role) {
-      alert('Tous les champs obligatoires doivent être remplis');
-      return;
-    }
-    if (d.motDePasse.length < 6) {
-      alert('Mot de passe minimum 6 caractères');
+    if (!d.nom || !d.prenom || !d.email || !d.role) {
+      this.alertService.error('Tous les champs obligatoires doivent être remplis');
       return;
     }
     this.saving.set(true);
-    this.http.post(`${environment.apiUrl}/users`, d).subscribe({
-      next: () => {
+    this.http.post<CreateUserResponse>(`${environment.apiUrl}/users`, d).subscribe({
+      next: (res) => {
         this.saving.set(false);
         this.showForm.set(false);
-        alert('Utilisateur créé avec succès');
+        this.credentials.set({ email: res.user.email, password: res.temporaryPassword });
         this.load();
       },
       error: (err) => {
         this.saving.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur création utilisateur';
-        alert(msg);
+        this.alertService.error(msg);
       },
     });
+  }
+
+  copyPassword(password: string) {
+    navigator.clipboard?.writeText(password);
   }
 
   editUser(u: User) {
@@ -151,7 +200,7 @@ export class DgUsersComponent implements OnInit {
   updateUser() {
     const d = this.editForm;
     if (!d.nom || !d.prenom) {
-      alert('Le nom et le prénom sont obligatoires');
+      this.alertService.error('Le nom et le prénom sont obligatoires');
       return;
     }
     this.editSaving.set(true);
@@ -165,13 +214,13 @@ export class DgUsersComponent implements OnInit {
       next: () => {
         this.editSaving.set(false);
         this.showEditForm.set(false);
-        alert('Utilisateur modifié avec succès');
+        this.alertService.success('Utilisateur modifié avec succès');
         this.load();
       },
       error: (err) => {
         this.editSaving.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : 'Erreur modification utilisateur';
-        alert(msg);
+        this.alertService.error(msg);
       },
     });
   }
@@ -180,24 +229,37 @@ export class DgUsersComponent implements OnInit {
     this.http.get<{ data: User[] }>(`${environment.apiUrl}/users?limit=1000`)
       .subscribe({
         next: (res) => this.users.set(res.data || []),
-        error: () => alert('Erreur chargement utilisateurs'),
+        error: () => this.alertService.error('Erreur chargement utilisateurs'),
       });
   }
 
   toggle(u: User) {
     const nextStatut = u.statut === 'ACTIF' ? 'INACTIF' : 'ACTIF';
-    this.loadingId.set(u.id);
-    this.http.patch(`${environment.apiUrl}/users/${u.id}/statut`, { statut: nextStatut })
-      .subscribe({
-        next: () => {
-          this.loadingId.set(null);
-          alert(`Utilisateur ${nextStatut === 'ACTIF' ? 'débloqué' : 'bloqué'}`);
-          this.load();
-        },
-        error: (err) => {
-          this.loadingId.set(null);
-          alert(err.error?.message || 'Erreur mise à jour');
-        },
-      });
+    const doToggle = () => {
+      this.loadingId.set(u.id);
+      this.http.patch(`${environment.apiUrl}/users/${u.id}/statut`, { statut: nextStatut })
+        .subscribe({
+          next: () => {
+            this.loadingId.set(null);
+            this.alertService.success(`Utilisateur ${nextStatut === 'ACTIF' ? 'débloqué' : 'bloqué'}`);
+            this.load();
+          },
+          error: (err) => {
+            this.loadingId.set(null);
+            this.alertService.error(err.error?.message || 'Erreur mise à jour');
+          },
+        });
+    };
+
+    if (nextStatut === 'INACTIF') {
+      this.alertService.confirm({
+        title: 'Bloquer cet utilisateur ?',
+        html: `<strong>${u.prenom} ${u.nom}</strong> ne pourra plus se connecter.`,
+        confirmText: 'Bloquer',
+        danger: true,
+      }).then((ok) => { if (ok) doToggle(); });
+    } else {
+      doToggle();
+    }
   }
 }

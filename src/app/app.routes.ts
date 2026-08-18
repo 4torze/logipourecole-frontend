@@ -2,8 +2,10 @@ import { Routes } from '@angular/router';
 import { RoleUtilisateur } from './core/models';
 import { AuthGuard } from './core/guards/auth.guard';
 import { RoleGuard } from './core/guards/role.guard';
+import { MustChangePasswordGuard } from './core/guards/must-change-password.guard';
 import { MainLayoutComponent } from './shared/layouts/main-layout.component';
 import { LoginComponent } from './features/auth/login.component';
+import { ChangePasswordComponent } from './features/auth/change-password.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { PublicInscriptionComponent } from './features/public/inscription.component';
 import { PublicBrochureComponent } from './features/public/brochure.component';
@@ -12,16 +14,27 @@ import { EnseignantHomeComponent } from './features/enseignant/enseignant-home.c
 import { EnseignantNotesComponent } from './features/enseignant/notes.component';
 import { EtudiantHomeComponent } from './features/etudiant/etudiant-home.component';
 import { EtudiantBulletinsComponent } from './features/etudiant/bulletins.component';
+import { EtudiantDevoirsComponent } from './features/etudiant/devoirs.component';
 import { DafHomeComponent } from './features/daf/daf-home.component';
 import { DafFinanceComponent } from './features/daf/daf-finance.component';
 import { DafTarifsComponent } from './features/daf/daf-tarifs.component';
 import { DafVersementsComponent } from './features/daf/daf-versements.component';
 import { RecuTemplatesComponent } from './features/daf/recu-templates.component';
 import { EtudesHomeComponent } from './features/etudes/etudes-home.component';
-import { SecretariatHomeComponent } from './features/secretariat/secretariat-home.component';
+import { SecretariatReunionsComponent } from './features/secretariat/secretariat-reunions.component';
+import { SecretariatVisitesComponent } from './features/secretariat/secretariat-visites.component';
+import { SecretariatProspectsComponent } from './features/secretariat/secretariat-prospects.component';
+import { SecretariatCourrierComponent } from './features/secretariat/secretariat-courrier.component';
+import { SecretariatAnnuaireComponent } from './features/secretariat/secretariat-annuaire.component';
+import { SecretariatTachesComponent } from './features/secretariat/secretariat-taches.component';
 import { MarketingHomeComponent } from './features/marketing/marketing-home.component';
 import { DsiHomeComponent } from './features/dsi/dsi-home.component';
+import { DsiClasseDetailComponent } from './features/dsi/dsi-classe-detail.component';
 import { DgUsersComponent } from './features/dg/dg-users.component';
+import { DgParametresComponent } from './features/dg/dg-parametres.component';
+import { DgElevesComponent } from './features/dg/dg-eleves.component';
+import { DgProfesseursComponent } from './features/dg/dg-professeurs.component';
+import { DgFinanceComponent } from './features/dg/dg-finance.component';
 import { AnneesScolairesComponent } from './features/etudes/annees-scolaires.component';
 import { PeriodesComponent } from './features/etudes/periodes.component';
 import { SallesComponent } from './features/etudes/salles.component';
@@ -30,6 +43,8 @@ import { AbsencesComponent } from './features/enseignant/absences.component';
 import { DevoirsComponent } from './features/enseignant/devoirs.component';
 import { EnseignantMesElevesComponent } from './features/enseignant/mes-eleves.component';
 import { EnseignantHistoriqueNotesComponent } from './features/enseignant/historique-notes.component';
+import { SeancesComponent } from './features/enseignant/seances.component';
+import { SeanceDetailComponent } from './features/seances/seance-detail.component';
 
 export const routes: Routes = [
   // Routes publiques (sans auth)
@@ -37,11 +52,20 @@ export const routes: Routes = [
   { path: 'inscription', component: PublicInscriptionComponent },
   { path: 'brochure', component: PublicBrochureComponent },
 
+  // Changement de mot de passe : hors layout principal pour éviter toute boucle
+  // avec MustChangePasswordGuard (qui protège les routes ci-dessous).
+  {
+    path: 'changer-mot-de-passe',
+    component: ChangePasswordComponent,
+    canActivate: [AuthGuard],
+  },
+
   // Routes authentifiées (avec layout)
   {
     path: '',
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
+    canActivateChild: [MustChangePasswordGuard],
     children: [
       { path: 'dashboard', component: DashboardComponent },
       {
@@ -64,10 +88,13 @@ export const routes: Routes = [
         data: { roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.SUPER_ADMIN] },
       },
       {
+        // Retiré du menu enseignant : les absences se gèrent désormais depuis
+        // la séance (voir /seance/:emploiDuTempsId/:date). Route conservée
+        // pour d'éventuelles corrections administratives (ÉTUDES).
         path: 'enseignant/absences',
         component: AbsencesComponent,
         canActivate: [RoleGuard],
-        data: { roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.ETUDES, RoleUtilisateur.SUPER_ADMIN] },
+        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.SUPER_ADMIN] },
       },
       {
         path: 'enseignant/devoirs',
@@ -87,6 +114,21 @@ export const routes: Routes = [
         canActivate: [RoleGuard],
         data: { roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.ETUDES, RoleUtilisateur.SUPER_ADMIN] },
       },
+      {
+        path: 'enseignant/seances',
+        component: SeancesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.ETUDES, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      // Détail d'une séance — page centrale de l'activité pédagogique,
+      // accessible en lecture-écriture pour l'enseignant/ÉTUDES, et en lecture
+      // seule + appréciation pour DG/DSI/Secrétaire.
+      {
+        path: 'seance/:emploiDuTempsId/:date',
+        component: SeanceDetailComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.ENSEIGNANT, RoleUtilisateur.ETUDES, RoleUtilisateur.DG, RoleUtilisateur.DSI, RoleUtilisateur.SECRETAIRE, RoleUtilisateur.SUPER_ADMIN] },
+      },
       // Espace Étudiant
       {
         path: 'etudiant',
@@ -97,6 +139,12 @@ export const routes: Routes = [
       {
         path: 'etudiant/bulletins',
         component: EtudiantBulletinsComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.ETUDIANT, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'etudiant/devoirs',
+        component: EtudiantDevoirsComponent,
         canActivate: [RoleGuard],
         data: { roles: [RoleUtilisateur.ETUDIANT, RoleUtilisateur.SUPER_ADMIN] },
       },
@@ -111,7 +159,7 @@ export const routes: Routes = [
         path: 'daf/finance',
         component: DafFinanceComponent,
         canActivate: [RoleGuard],
-        data: { roles: [RoleUtilisateur.DAF, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+        data: { roles: [RoleUtilisateur.DAF, RoleUtilisateur.SUPER_ADMIN] },
       },
       {
         path: 'daf/tarifs',
@@ -142,13 +190,13 @@ export const routes: Routes = [
         path: 'etudes/annees-scolaires',
         component: AnneesScolairesComponent,
         canActivate: [RoleGuard],
-        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.SUPER_ADMIN] },
       },
       {
         path: 'etudes/periodes',
         component: PeriodesComponent,
         canActivate: [RoleGuard],
-        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.SUPER_ADMIN] },
       },
       {
         path: 'etudes/salles',
@@ -160,14 +208,49 @@ export const routes: Routes = [
         path: 'etudes/emploi-du-temps',
         component: EmploiDuTempsComponent,
         canActivate: [RoleGuard],
-        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+        data: { roles: [RoleUtilisateur.ETUDES, RoleUtilisateur.DSI, RoleUtilisateur.DG, RoleUtilisateur.SECRETAIRE, RoleUtilisateur.SUPER_ADMIN] },
       },
       // Espace Secrétariat
       {
-        path: 'secretariat',
-        component: SecretariatHomeComponent,
+        path: 'secretariat/reunions',
+        component: SecretariatReunionsComponent,
         canActivate: [RoleGuard],
         data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat/visites',
+        component: SecretariatVisitesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat/prospects',
+        component: SecretariatProspectsComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat/courrier',
+        component: SecretariatCourrierComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat/annuaire',
+        component: SecretariatAnnuaireComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat/taches',
+        component: SecretariatTachesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.SECRETAIRE, RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'secretariat',
+        redirectTo: 'secretariat/reunions',
+        pathMatch: 'full',
       },
       // Espace Marketing
       {
@@ -183,10 +266,40 @@ export const routes: Routes = [
         canActivate: [RoleGuard],
         data: { roles: [RoleUtilisateur.DSI, RoleUtilisateur.SUPER_ADMIN] },
       },
-      // Espace DG (utilisateurs uniquement — le dashboard est unifié sur /dashboard)
+      {
+        path: 'dsi/classes/:id',
+        component: DsiClasseDetailComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.DSI, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      // Espace DG (utilisateurs + paramètres — le dashboard est unifié sur /dashboard)
       {
         path: 'dg/utilisateurs',
         component: DgUsersComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'dg/parametres',
+        component: DgParametresComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'dg/finance',
+        component: DgFinanceComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'dg/eleves',
+        component: DgElevesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: [RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
+      },
+      {
+        path: 'dg/professeurs',
+        component: DgProfesseursComponent,
         canActivate: [RoleGuard],
         data: { roles: [RoleUtilisateur.DG, RoleUtilisateur.SUPER_ADMIN] },
       },

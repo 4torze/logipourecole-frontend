@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PeriodeService } from '../../core/services/periode.service';
+import { AlertService } from '../../core/services/alert.service';
 import { Periode } from '../../core/models';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 
@@ -10,65 +11,66 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
   standalone: true,
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
-    <div class="max-w-[1000px] mx-auto">
-      <div class="flex items-center justify-between mb-6">
+    <div class="page-container" style="max-width:1000px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px">
         <div>
-          <h1 class="text-2xl font-semibold text-slate-900 m-0">Périodes scolaires</h1>
-          <p class="text-sm text-slate-500 mt-1">Gérez les semestres et trimestres</p>
+          <h2 style="margin:0 0 4px;font-size:22px">Périodes scolaires</h2>
+          <p style="margin:0;font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Gérez les semestres et trimestres</p>
         </div>
-        <button (click)="showForm.set(true)" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm">
-          <span class="material-symbols-outlined text-lg">add</span> Nouvelle période
+        <button (click)="showForm.set(true)" class="btn btn-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span> Nouvelle période
         </button>
       </div>
 
       @if (showForm()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showForm.set(false)">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 class="font-bold text-slate-900">Nouvelle période</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="showForm.set(false)"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="showForm.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Nouvelle période</span>
+              <button class="btn btn-icon btn-secondary" (click)="showForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6 flex flex-col gap-4">
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Libellé</label><input type="text" [(ngModel)]="newPeriode.libelle" placeholder="Ex: Semestre 1" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Type</label><select [(ngModel)]="newPeriode.type" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="SEMESTRE">Semestre</option><option value="TRIMESTRE">Trimestre</option></select></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Date début</label><input type="date" [(ngModel)]="newPeriode.dateDebut" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex flex-col gap-1.5"><label class="text-xs font-semibold text-slate-700">Date fin</label><input type="date" [(ngModel)]="newPeriode.dateFin" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" /></div>
-              <div class="flex gap-3 mt-2">
-                <button (click)="create()" [disabled]="saving()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">@if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">save</span> } Ajouter</button>
-                <button (click)="showForm.set(false)" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button>
-              </div>
+            <div class="field"><label>Libellé</label><input type="text" [(ngModel)]="newPeriode.libelle" placeholder="Ex: Semestre 1" class="input" /></div>
+            <div class="field"><label>Type</label><select [(ngModel)]="newPeriode.type" class="input"><option value="SEMESTRE">Semestre</option><option value="TRIMESTRE">Trimestre</option></select></div>
+            <div class="field"><label>Date début</label><input type="date" [(ngModel)]="newPeriode.dateDebut" class="input" /></div>
+            <div class="field"><label>Date fin</label><input type="date" [(ngModel)]="newPeriode.dateFin" class="input" /></div>
+            <div class="dialog-actions">
+              <button (click)="showForm.set(false)" class="btn btn-secondary">Annuler</button>
+              <button (click)="create()" [disabled]="saving()" class="btn btn-primary">@if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">save</span> } Ajouter</button>
             </div>
           </div>
         </div>
       }
 
-      <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-              <tr><th class="px-4 py-3 text-left font-semibold">Libellé</th><th class="px-4 py-3 text-left font-semibold">Type</th><th class="px-4 py-3 text-left font-semibold">Début</th><th class="px-4 py-3 text-left font-semibold">Fin</th></tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-              @for (p of pagedPeriodes(); track p.id) {
-                <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3 font-medium text-slate-900">{{ p.libelle }}</td>
-                  <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ p.type }}</span></td>
-                  <td class="px-4 py-3 text-slate-600">{{ p.dateDebut | date:'dd/MM/yyyy' }}</td>
-                  <td class="px-4 py-3 text-slate-600">{{ p.dateFin | date:'dd/MM/yyyy' }}</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="4" class="text-center text-slate-400 py-8">Aucune période enregistrée</td></tr>
-              }
-            </tbody>
-          </table>
+      <div class="gs-panel">
+        <div class="gs-panel-body">
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Libellé</th><th>Type</th><th>Début</th><th>Fin</th></tr>
+              </thead>
+              <tbody>
+                @for (p of pagedPeriodes(); track p.id) {
+                  <tr>
+                    <td style="font-weight:600">{{ p.libelle }}</td>
+                    <td><span class="tag tag-neutral">{{ p.type }}</span></td>
+                    <td>{{ p.dateDebut | date:'dd/MM/yyyy' }}</td>
+                    <td>{{ p.dateFin | date:'dd/MM/yyyy' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="table-empty">Aucune période enregistrée</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-pagination [page]="page()" [pageSize]="pageSize" [totalItems]="periodes().length" (pageChange)="page.set($event)"></app-pagination>
         </div>
-        <app-pagination [page]="page()" [pageSize]="pageSize" [totalItems]="periodes().length" (pageChange)="page.set($event)"></app-pagination>
       </div>
     </div>
   `,
 })
 export class PeriodesComponent implements OnInit {
   private service = inject(PeriodeService);
+  private alertService = inject(AlertService);
 
   periodes = signal<Periode[]>([]);
   pageSize = 10;
@@ -87,7 +89,7 @@ export class PeriodesComponent implements OnInit {
   load() {
     this.service.findAll().subscribe({
       next: (d) => this.periodes.set(d),
-      error: () => alert('Erreur chargement périodes'),
+      error: () => this.alertService.error('Erreur chargement périodes'),
     });
   }
 
@@ -98,10 +100,10 @@ export class PeriodesComponent implements OnInit {
         this.saving.set(false);
         this.showForm.set(false);
         this.newPeriode = { libelle: '', type: 'SEMESTRE', dateDebut: '', dateFin: '' };
-        alert('Période créée');
+        this.alertService.success('Période créée');
         this.load();
       },
-      error: (err: any) => { this.saving.set(false); alert(err?.error?.message || 'Erreur création'); },
+      error: (err: any) => { this.saving.set(false); this.alertService.error(err?.error?.message || 'Erreur création'); },
     });
   }
 }

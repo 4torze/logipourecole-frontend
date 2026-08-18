@@ -7,26 +7,28 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     @if (totalItems > 0) {
-      <div class="flex items-center justify-between gap-4 px-1 py-3 flex-wrap">
-        <div class="text-xs text-slate-500">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 4px;flex-wrap:wrap">
+        <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">
           Affichage {{ startIndex + 1 }}–{{ endIndex }} sur {{ totalItems }}
         </div>
-        <div class="flex items-center gap-1">
+        <div style="display:flex;align-items:center;gap:4px">
           <button
             type="button"
-            class="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            class="btn btn-icon btn-secondary"
             [disabled]="page <= 1"
             (click)="goTo(page - 1)">
-            <span class="material-symbols-outlined text-lg">chevron_left</span>
+            <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
           </button>
           @for (p of pagesToShow(); track p) {
             @if (p === -1) {
-              <span class="px-1 text-slate-400 text-sm">…</span>
+              <span style="padding:0 4px;color:color-mix(in srgb, var(--color-text) 45%, transparent);font-size:14px">…</span>
             } @else {
               <button
                 type="button"
-                class="h-8 w-8 flex items-center justify-center rounded-lg text-sm font-medium"
-                [class]="p === page ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50 border border-slate-200'"
+                class="btn"
+                [class.btn-primary]="p === page"
+                [class.btn-secondary]="p !== page"
+                style="width:32px;height:32px;padding:0"
                 (click)="goTo(p)">
                 {{ p }}
               </button>
@@ -34,10 +36,10 @@ import { CommonModule } from '@angular/common';
           }
           <button
             type="button"
-            class="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            class="btn btn-icon btn-secondary"
             [disabled]="page >= totalPages"
             (click)="goTo(page + 1)">
-            <span class="material-symbols-outlined text-lg">chevron_right</span>
+            <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
           </button>
         </div>
       </div>

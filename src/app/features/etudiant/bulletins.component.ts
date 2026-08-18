@@ -1,47 +1,50 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-etudiant-bulletins',
   standalone: true,
-  imports: [CommonModule, NzCardModule, NzButtonModule, NzIconModule, NzTableModule, NzTagModule, NzEmptyModule],
+  imports: [CommonModule],
   template: `
     <div class="page-container">
-      <h1 class="page-title">Mes bulletins</h1>
+      <h1 style="margin-bottom:24px">Mes bulletins</h1>
 
-      @if (bulletins().length > 0) {
-        <nz-card>
-          <nz-table #bulTable [nzData]="bulletins()" [nzPageSize]="20" nzSize="small">
-            <thead><tr><th>Période</th><th>Année</th><th>Classe</th><th>Moyenne</th><th>Rang</th><th>Mention</th><th>Statut</th><th>Actions</th></tr></thead>
-            <tbody>
-              @for (b of bulTable.data; track b.id) {
-                <tr><td>{{ b.periode?.libelle }}</td><td>{{ b.anneeScolaire?.libelle }}</td><td>{{ b.classe?.nom }}</td>
-                  <td><strong>{{ b.moyenneGenerale?.toFixed(2) }}/20</strong></td><td>{{ b.rang || '—' }}</td>
-                  <td><nz-tag nzColor="processing">{{ b.mention }}</nz-tag></td>
-                  <td>
-                    @if (b.validePar) { <nz-tag nzColor="success">Validé</nz-tag> }
-                    @else { <nz-tag nzColor="warning">En attente</nz-tag> }
-                  </td>
-                  <td><button nz-button nzSize="small" nzType="text" (click)="downloadBulletin(b)" nz-tooltip="Télécharger"><span nz-icon nzType="download"></span></button></td></tr>
-              }
-            </tbody>
-          </nz-table>
-        </nz-card>
-      } @else {
-        <nz-card style="text-align:center; padding:40px;">
-          <span nz-icon nzType="file-text" style="font-size:48px; color:#d1d5db;"></span>
-          <p style="color:#9ca3af; margin-top:16px;">Aucun bulletin disponible pour le moment</p>
-        </nz-card>
-      }
+      <div class="gs-panel"><div class="gs-panel-body">
+        @if (bulletins().length > 0) {
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Période</th><th>Année</th><th>Classe</th><th>Moyenne</th><th>Rang</th><th>Mention</th><th>Statut</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                @for (b of bulletins(); track b.id) {
+                  <tr>
+                    <td>{{ b.periode?.libelle }}</td>
+                    <td>{{ b.anneeScolaire?.libelle }}</td>
+                    <td>{{ b.classe?.nom }}</td>
+                    <td style="font-weight:600">{{ b.moyenneGenerale?.toFixed(2) }}/20</td>
+                    <td>{{ b.rang || '—' }}</td>
+                    <td><span class="tag tag-neutral">{{ b.mention }}</span></td>
+                    <td>
+                      @if (b.validePar) { <span class="tag tag-success">Validé</span> }
+                      @else { <span class="tag tag-accent">En attente</span> }
+                    </td>
+                    <td><button (click)="downloadBulletin(b)" class="btn btn-icon btn-secondary" title="Télécharger"><span class="material-symbols-outlined" style="font-size:18px">download</span></button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="table-empty">
+            <span class="material-symbols-outlined" style="font-size:40px;display:block;margin-bottom:8px;opacity:0.6">description</span>
+            Aucun bulletin disponible pour le moment
+          </div>
+        }
+      </div></div>
     </div>
   `,
 })

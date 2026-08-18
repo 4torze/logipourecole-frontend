@@ -6,13 +6,13 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div [class]="cardClass">
+    <div class="gs-panel">
       @if (title) {
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="gs-panel-head">
           <div>
-            <h3 class="font-bold text-lg text-slate-900">{{ title }}</h3>
+            <h3 style="margin:0;font-size:16px">{{ title }}</h3>
             @if (subtitle) {
-              <p class="text-sm text-slate-500 mt-0.5">{{ subtitle }}</p>
+              <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:2px 0 0">{{ subtitle }}</p>
             }
           </div>
           <ng-content select="[card-actions]" />
@@ -27,12 +27,8 @@ import { CommonModule } from '@angular/common';
 export class CardComponent {
   @Input() title = '';
   @Input() subtitle = '';
-  @Input() padding = 'p-6';
+  @Input() padding = 'gs-panel-body';
   @Input() noPadding = false;
-
-  get cardClass(): string {
-    return 'bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden';
-  }
 
   get bodyClass(): string {
     return this.noPadding ? '' : this.padding;

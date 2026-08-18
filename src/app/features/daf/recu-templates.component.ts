@@ -3,52 +3,68 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-recu-templates',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  styles: [`
+    .rt-card { flex: 0 0 240px; overflow: hidden; transition: transform .15s; }
+    .rt-card:hover { transform: translateY(-2px); }
+    .rt-preview { width: 100%; height: 200px; overflow: hidden; background: var(--color-neutral-100); border-bottom: 1px solid var(--color-divider); position: relative; }
+    .rt-preview iframe { width: 600px; height: 800px; border: none; transform-origin: top left; transform: scale(0.3); pointer-events: none; position: absolute; top: 0; left: 0; }
+    .rt-badge { position: absolute; top: 8px; right: 8px; }
+    .rt-model-card { border: 2px solid var(--color-divider); padding: 12px; cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
+    .rt-model-card:hover { border-color: var(--color-accent); }
+    .rt-model-card.selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+    .rt-model-preview { width: 100%; height: 160px; overflow: hidden; background: var(--color-bg); border: 1px solid var(--color-divider); margin-bottom: 10px; position: relative; }
+    .rt-model-preview iframe { width: 600px; height: 800px; border: none; transform-origin: top left; transform: scale(0.267); pointer-events: none; position: absolute; top: 0; left: 0; }
+    .rt-var-code { background: var(--color-accent-100); color: var(--color-accent-800); padding: 2px 6px; font-size: 11px; margin: 0 2px; }
+  `],
   template: `
-    <div class="max-w-[1200px] mx-auto">
+    <div class="page-container" style="display:flex;flex-direction:column;gap:24px">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-          <h1 class="text-2xl font-semibold text-slate-900 m-0">Templates de Reçu</h1>
-          <p class="text-sm text-slate-500 mt-1">Gérez vos modèles de reçus de paiement</p>
+          <h1 style="margin:0">Templates de Reçu</h1>
+          <p style="margin:4px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Gérez vos modèles de reçus de paiement</p>
         </div>
-        <button (click)="openCreate()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all active:scale-[0.98] text-sm">
-          <span class="material-symbols-outlined text-lg">add</span> Nouveau template
+        <button (click)="openCreate()" class="btn btn-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span> Nouveau template
         </button>
       </div>
 
       <!-- Templates row -->
       @if (templates().length === 0) {
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-12 text-center">
-          <span class="material-symbols-outlined text-5xl text-slate-300">description</span>
-          <p class="text-slate-400 mt-3 text-sm">Aucun template créé. Cliquez sur « Nouveau template » pour commencer.</p>
+        <div class="gs-panel">
+          <div class="gs-panel-body" style="padding:48px;text-align:center">
+            <span class="material-symbols-outlined" style="font-size:48px;color:color-mix(in srgb, var(--color-text) 35%, transparent)">description</span>
+            <p style="margin-top:12px;font-size:13px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">Aucun template créé. Cliquez sur « Nouveau template » pour commencer.</p>
+          </div>
         </div>
       } @else {
-        <div class="flex gap-5 overflow-x-auto pb-4">
+        <div style="display:flex;gap:20px;overflow-x:auto;padding-bottom:6px">
           @for (t of templates(); track t.id) {
-            <div class="flex-[0_0_240px] bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
-              <div class="w-full h-[200px] overflow-hidden bg-slate-50 border-b border-slate-100 relative">
-                <iframe [srcdoc]="getSafePreviewHtmlForTemplate(t)" class="w-[600px] h-[800px] border-none origin-top-left pointer-events-none absolute top-0 left-0" style="transform: scale(0.3);" sandbox="allow-same-origin"></iframe>
+            <div class="gs-panel rt-card">
+              <div class="rt-preview">
+                <iframe [srcdoc]="getSafePreviewHtmlForTemplate(t)" sandbox="allow-same-origin"></iframe>
                 @if (t.isDefault) {
-                  <div class="absolute top-2 right-2"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white shadow-sm"><span class="material-symbols-outlined text-sm">check_circle</span> Actif</span></div>
+                  <div class="rt-badge"><span class="tag tag-success"><span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Actif</span></div>
                 }
               </div>
-              <div class="p-4">
-                <h4 class="text-sm font-semibold text-slate-900 m-0 truncate mb-2">{{ t.nom }}</h4>
-                <div class="flex items-center gap-2 mb-3">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" [class]="t.modele === 'PERSONNALISE' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700'">{{ t.modele }}</span>
-                  <span class="text-xs text-slate-400">{{ t.createdAt | date:'dd/MM/yyyy' }}</span>
+              <div class="gs-panel-body">
+                <h4 style="font-size:13px;margin:0 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.nom }}</h4>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <span class="tag" [class]="t.modele === 'PERSONNALISE' ? 'tag-accent' : 'tag-neutral'">{{ t.modele }}</span>
+                  <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ t.createdAt | date:'dd/MM/yyyy' }}</span>
                 </div>
-                <div class="flex gap-1.5">
-                  <button (click)="editTemplate(t)" class="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover text-xs"><span class="material-symbols-outlined text-base">edit</span> Modifier</button>
-                  <button (click)="previewExisting(t)" class="flex items-center justify-center w-9 h-9 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50" title="Aperçu"><span class="material-symbols-outlined text-base">visibility</span></button>
-                  <button (click)="downloadTemplate(t)" class="flex items-center justify-center w-9 h-9 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50" title="Télécharger PDF"><span class="material-symbols-outlined text-base">download</span></button>
-                  <button (click)="confirmDeleteTemplate(t)" class="flex items-center justify-center w-9 h-9 border border-slate-200 text-red-500 rounded-lg hover:bg-red-50" title="Supprimer"><span class="material-symbols-outlined text-base">delete</span></button>
+                <div style="display:flex;gap:6px">
+                  <button (click)="editTemplate(t)" class="btn btn-primary btn-sm" style="flex:1"><span class="material-symbols-outlined" style="font-size:16px">edit</span> Modifier</button>
+                  <button (click)="previewExisting(t)" class="btn btn-icon btn-secondary" title="Aperçu"><span class="material-symbols-outlined" style="font-size:16px">visibility</span></button>
+                  <button (click)="downloadTemplate(t)" class="btn btn-icon btn-secondary" title="Télécharger PDF"><span class="material-symbols-outlined" style="font-size:16px">download</span></button>
+                  <button (click)="confirmDeleteTemplate(t)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button>
                 </div>
               </div>
             </div>
@@ -58,34 +74,32 @@ import { environment } from '../../../environments/environment';
 
       <!-- Model choice modal -->
       @if (showModelChoice()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="cancelCreate()">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <h3 class="font-bold text-slate-900">Choisir un modèle de base</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="cancelCreate()"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="cancelCreate()">
+          <div class="dialog" style="width:min(760px,100%);max-height:90vh;overflow-y:auto" (click)="$event.stopPropagation()">
+            <div class="dialog-title" style="display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--color-surface);z-index:1">
+              Choisir un modèle de base
+              <button class="btn btn-icon btn-secondary" (click)="cancelCreate()"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6">
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                @for (tpl of predefinedModels(); track tpl.modele) {
-                  <div class="border-2 rounded-xl p-3 cursor-pointer transition-all text-center" [class]="selectedModel() === tpl.modele ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-primary hover:-translate-y-0.5 hover:shadow-md'" (click)="selectedModel.set(tpl.modele)">
-                    <div class="w-full h-[160px] overflow-hidden rounded-lg bg-white border border-slate-100 mb-2.5 relative">
-                      <iframe [srcdoc]="getSafePreviewHtml(tpl)" class="w-[600px] h-[800px] border-none origin-top-left pointer-events-none absolute top-0 left-0" style="transform: scale(0.267);" sandbox="allow-same-origin"></iframe>
-                    </div>
-                    <div class="text-xs font-medium text-slate-700"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 mr-1">{{ tpl.modele }}</span> {{ tpl.nom }}</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">
+              @for (tpl of predefinedModels(); track tpl.modele) {
+                <div class="rt-model-card" [class.selected]="selectedModel() === tpl.modele" (click)="selectedModel.set(tpl.modele)">
+                  <div class="rt-model-preview">
+                    <iframe [srcdoc]="getSafePreviewHtml(tpl)" sandbox="allow-same-origin"></iframe>
                   </div>
-                }
-                <div class="border-2 rounded-xl p-3 cursor-pointer transition-all text-center" [class]="selectedModel() === 'PERSONNALISE' ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-primary hover:-translate-y-0.5 hover:shadow-md'" (click)="selectedModel.set('PERSONNALISE')">
-                  <div class="w-full h-[160px] overflow-hidden rounded-lg bg-slate-50 border border-slate-100 mb-2.5 flex flex-col items-center justify-center">
-                    <span class="material-symbols-outlined text-slate-400" style="font-size:32px;">edit</span>
-                    <div class="mt-1.5 text-xs text-slate-400">Partir de zéro</div>
-                  </div>
-                  <div class="text-xs font-medium text-slate-700"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 mr-1">PERSO</span> Vide</div>
+                  <div style="font-size:12px"><span class="tag tag-neutral" style="margin-right:4px">{{ tpl.modele }}</span> {{ tpl.nom }}</div>
                 </div>
+              }
+              <div class="rt-model-card" [class.selected]="selectedModel() === 'PERSONNALISE'" (click)="selectedModel.set('PERSONNALISE')">
+                <div class="rt-model-preview" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                  <span class="material-symbols-outlined" style="font-size:32px;color:color-mix(in srgb, var(--color-text) 40%, transparent)">edit</span>
+                  <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">Partir de zéro</div>
+                </div>
+                <div style="font-size:12px"><span class="tag tag-accent" style="margin-right:4px">PERSO</span> Vide</div>
               </div>
-              <div class="mt-5 flex gap-2 justify-end">
-                <button (click)="cancelCreate()" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button>
-                <button (click)="confirmModel()" [disabled]="!selectedModel()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">Continuer <span class="material-symbols-outlined text-lg">arrow_forward</span></button>
-              </div>
+            </div>
+            <div class="dialog-actions">
+              <button (click)="cancelCreate()" class="btn btn-secondary">Annuler</button>
+              <button (click)="confirmModel()" [disabled]="!selectedModel()" class="btn btn-primary">Continuer <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span></button>
             </div>
           </div>
         </div>
@@ -93,39 +107,39 @@ import { environment } from '../../../environments/environment';
 
       <!-- Editor modal -->
       @if (showEditor()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="cancelEditor()">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl mx-4 max-h-[92vh] overflow-y-auto" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <h3 class="font-bold text-slate-900">{{ editingId ? 'Modifier le template' : 'Nouveau template' }}</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="cancelEditor()"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="cancelEditor()">
+          <div class="dialog" style="width:min(880px,100%);max-height:92vh;overflow-y:auto" (click)="$event.stopPropagation()">
+            <div class="dialog-title" style="display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--color-surface);z-index:1">
+              {{ editingId ? 'Modifier le template' : 'Nouveau template' }}
+              <button class="btn btn-icon btn-secondary" (click)="cancelEditor()"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6">
-              <div class="flex gap-3 mb-4 items-center">
-                <div class="flex-1 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-700">Nom du template</label>
-                  <input type="text" [(ngModel)]="editorTemplate.nom" placeholder="Ex: Reçu standard 2024" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" />
-                </div>
-                <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mt-6"><input type="checkbox" [(ngModel)]="editorTemplate.isDefault" class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary/40" /> Définir par défaut</label>
+            <div style="display:flex;gap:14px;align-items:flex-end">
+              <div class="field" style="flex:1;margin:0">
+                <label>Nom du template</label>
+                <input type="text" [(ngModel)]="editorTemplate.nom" placeholder="Ex: Reçu standard 2024" class="input" />
               </div>
-              <div class="mb-4 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
-                <span class="font-semibold text-slate-700">Variables :</span>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{ECOLE_NOM}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{NUMERO_RECU}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{ETUDIANT_NOM}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{ETUDIANT_PRENOM}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{DATE_PAIEMENT}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{MODE_PAIEMENT}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{VERSEMENT}}' }}</code>
-                <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs text-blue-900 mx-0.5">{{ '{{MONTANT}}' }}</code>
-              </div>
-              <textarea [(ngModel)]="editorTemplate.htmlContent" placeholder="HTML du template..." rows="18" class="w-full p-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm font-mono"></textarea>
-              @if (editorError()) { <div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 mt-3"><span class="material-symbols-outlined text-lg">error</span> {{ editorError() }}</div> }
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;height:36px">
+                <input type="checkbox" [(ngModel)]="editorTemplate.isDefault" style="width:16px;height:16px;accent-color:var(--color-accent)" /> Définir par défaut
+              </label>
             </div>
-            <div class="flex gap-2 justify-end px-6 py-4 border-t border-slate-100 sticky bottom-0 bg-white">
-              <button (click)="previewTemplate()" [disabled]="previewing()" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm disabled:opacity-50">@if (previewing()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">visibility</span> } Aperçu</button>
-              <button (click)="downloadCurrentTemplate()" [disabled]="downloading()" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm disabled:opacity-50">@if (downloading()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">download</span> } PDF</button>
-              <button (click)="cancelEditor()" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button>
-              <button (click)="saveTemplate()" [disabled]="saving()" class="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50">@if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined text-lg">save</span> } {{ editingId ? 'Mettre à jour' : 'Enregistrer' }}</button>
+            <div class="gs-well" style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">
+              <span style="font-weight:600;color:var(--color-text)">Variables :</span>
+              <code class="rt-var-code">{{ '{{ECOLE_NOM}}' }}</code>
+              <code class="rt-var-code">{{ '{{NUMERO_RECU}}' }}</code>
+              <code class="rt-var-code">{{ '{{ETUDIANT_NOM}}' }}</code>
+              <code class="rt-var-code">{{ '{{ETUDIANT_PRENOM}}' }}</code>
+              <code class="rt-var-code">{{ '{{DATE_PAIEMENT}}' }}</code>
+              <code class="rt-var-code">{{ '{{MODE_PAIEMENT}}' }}</code>
+              <code class="rt-var-code">{{ '{{VERSEMENT}}' }}</code>
+              <code class="rt-var-code">{{ '{{MONTANT}}' }}</code>
+            </div>
+            <textarea [(ngModel)]="editorTemplate.htmlContent" placeholder="HTML du template..." rows="18" class="input" style="font-family:monospace;min-height:320px"></textarea>
+            @if (editorError()) { <div class="tag tag-danger" style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:13px;margin-top:8px"><span class="material-symbols-outlined" style="font-size:18px">error</span> {{ editorError() }}</div> }
+            <div class="dialog-actions" style="position:sticky;bottom:0;background:var(--color-surface);padding-top:8px">
+              <button (click)="previewTemplate()" [disabled]="previewing()" class="btn btn-secondary">@if (previewing()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">visibility</span> } Aperçu</button>
+              <button (click)="downloadCurrentTemplate()" [disabled]="downloading()" class="btn btn-secondary">@if (downloading()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">download</span> } PDF</button>
+              <button (click)="cancelEditor()" class="btn btn-secondary">Annuler</button>
+              <button (click)="saveTemplate()" [disabled]="saving()" class="btn btn-primary">@if (saving()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">save</span> } {{ editingId ? 'Mettre à jour' : 'Enregistrer' }}</button>
             </div>
           </div>
         </div>
@@ -136,6 +150,7 @@ import { environment } from '../../../environments/environment';
 export class RecuTemplatesComponent implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+  private alertService = inject(AlertService);
 
   predefinedModels = signal<any[]>([]);
   templates = signal<any[]>([]);
@@ -158,7 +173,10 @@ export class RecuTemplatesComponent implements OnInit {
     this.loadSampleData();
   }
 
-  confirmDeleteTemplate(t: any) { if (confirm('Supprimer ?')) this.deleteTemplate(t); }
+  async confirmDeleteTemplate(t: any) {
+    const ok = await this.alertService.confirm({ title: 'Supprimer ce template ?', confirmText: 'Supprimer', danger: true });
+    if (ok) this.deleteTemplate(t);
+  }
 
   loadPredefined() {
     this.http.get<any>(`${environment.apiUrl}/daf/recu-templates/predefined`).subscribe({
@@ -244,7 +262,7 @@ export class RecuTemplatesComponent implements OnInit {
     req.subscribe({
       next: () => {
         this.saving.set(false);
-        alert(this.editingId ? 'Template mis à jour' : 'Template créé');
+        this.alertService.success(this.editingId ? 'Template mis à jour' : 'Template créé');
         this.showEditor.set(false);
         this.loadTemplates();
       },
@@ -270,7 +288,7 @@ export class RecuTemplatesComponent implements OnInit {
   deleteTemplate(t: any) {
     this.http.delete(`${environment.apiUrl}/daf/recu-templates/${t.id}`).subscribe({
       next: () => { this.loadTemplates(); },
-      error: (err) => alert(err.error?.message || 'Erreur'),
+      error: (err) => this.alertService.error(err.error?.message || 'Erreur'),
     });
   }
 
@@ -285,7 +303,7 @@ export class RecuTemplatesComponent implements OnInit {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
       },
-      error: () => { this.previewing.set(false); alert('Erreur aperçu'); },
+      error: () => { this.previewing.set(false); this.alertService.error('Erreur aperçu'); },
     });
   }
 
@@ -300,7 +318,7 @@ export class RecuTemplatesComponent implements OnInit {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
       },
-      error: () => { this.previewing.set(false); alert('Erreur aperçu'); },
+      error: () => { this.previewing.set(false); this.alertService.error('Erreur aperçu'); },
     });
   }
 
@@ -319,7 +337,7 @@ export class RecuTemplatesComponent implements OnInit {
       },
       error: (err) => {
         console.error('Download error:', err);
-        alert('Erreur téléchargement: ' + (err.status || '') + ' ' + (err.statusText || ''));
+        this.alertService.error('Erreur téléchargement: ' + (err.status || '') + ' ' + (err.statusText || ''));
       },
     });
   }
@@ -346,7 +364,7 @@ export class RecuTemplatesComponent implements OnInit {
       error: (err) => {
         this.downloading.set(false);
         console.error('Download error:', err);
-        alert('Erreur téléchargement: ' + (err.status || '') + ' ' + (err.statusText || ''));
+        this.alertService.error('Erreur téléchargement: ' + (err.status || '') + ' ' + (err.statusText || ''));
       },
     });
   }

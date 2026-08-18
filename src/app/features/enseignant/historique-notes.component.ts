@@ -3,116 +3,97 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzMessageService } from 'ng-zorro-antd/message';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-enseignant-historique-notes',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule,
-    NzCardModule, NzButtonModule, NzIconModule, NzSelectModule,
-    NzTableModule, NzTagModule, NzEmptyModule, NzInputModule,
-  ],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-container">
-      <h1 class="page-title">Historique des notes</h1>
+      <h1 style="margin-bottom:24px">Historique des notes</h1>
 
       @if (loading()) {
-        <nz-card><div style="text-align:center; padding:20px;"><span nz-icon nzType="loading" style="font-size:24px;"></span> Chargement...</div></nz-card>
+        <div class="gs-panel"><div class="gs-panel-body">
+          <div class="flex items-center gap-2 text-sm text-muted py-6"><span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Chargement...</div>
+        </div></div>
       } @else if (notes().length === 0) {
-        <nz-card>
-          <nz-empty nzDescription="Vous n'avez encore saisi aucune note. Allez dans 'Évaluations' pour commencer.">
-            <button nz-button nzType="primary" (click)="goToEvaluations()"><span nz-icon nzType="edit"></span> Saisir des notes</button>
-          </nz-empty>
-        </nz-card>
+        <div class="gs-panel"><div class="gs-panel-body">
+          <span class="material-symbols-outlined text-3xl text-muted block mb-2">history_edu</span>
+          <p class="text-sm text-muted mb-4">Vous n'avez encore saisi aucune note. Allez dans « Évaluations » pour commencer.</p>
+          <button (click)="goToEvaluations()" class="btn btn-primary" style="margin:0 auto">
+            <span class="material-symbols-outlined" style="font-size:18px">edit</span> Saisir des notes
+          </button>
+        </div></div>
       } @else {
         <!-- Filtres -->
-        <nz-card style="margin-bottom: 16px;">
-          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-            <nz-select
-              [ngModel]="filterClasse()"
-              (ngModelChange)="filterClasse.set($event)"
-              nzPlaceHolder="Toutes les classes"
-              style="min-width:200px;"
-              nzSize="large"
-              nzAllowClear>
-              @for (c of classes(); track c) {
-                <nz-option [nzValue]="c" [nzLabel]="c"></nz-option>
-              }
-            </nz-select>
-            <nz-select
-              [ngModel]="filterMatiere()"
-              (ngModelChange)="filterMatiere.set($event)"
-              nzPlaceHolder="Toutes les matières"
-              style="min-width:200px;"
-              nzSize="large"
-              nzAllowClear>
-              @for (m of matieres(); track m) {
-                <nz-option [nzValue]="m" [nzLabel]="m"></nz-option>
-              }
-            </nz-select>
-            <nz-input-group nzSearch style="width:280px;">
-              <input type="text" nz-input [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Rechercher un élève..." />
-            </nz-input-group>
-            <div style="margin-left:auto; font-size:13px; color:#6b7280;">
-              {{ filteredNotes().length }} note(s)
-            </div>
+        <div class="gs-panel"><div class="gs-panel-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <select [ngModel]="filterClasse()" (ngModelChange)="filterClasse.set($event)" class="input" style="width:auto;min-width:200px">
+            <option value="">Toutes les classes</option>
+            @for (c of classes(); track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+          <select [ngModel]="filterMatiere()" (ngModelChange)="filterMatiere.set($event)" class="input" style="width:auto;min-width:200px">
+            <option value="">Toutes les matières</option>
+            @for (m of matieres(); track m) { <option [value]="m">{{ m }}</option> }
+          </select>
+          <div class="login-input" style="position:relative;flex:1;min-width:220px">
+            <span class="material-symbols-outlined" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:color-mix(in srgb, var(--color-text) 45%, transparent);font-size:20px">search</span>
+            <input type="text" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Rechercher un élève..." class="input" style="padding-left:38px" />
           </div>
-        </nz-card>
+          <div style="margin-left:auto;font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ filteredNotes().length }} note(s)</div>
+        </div></div>
 
         <!-- Tableau -->
-        <nz-card>
-          <nz-table #tbl [nzData]="filteredNotes()" [nzPageSize]="50" [nzFrontPagination]="true" nzSize="middle">
-            <thead><tr>
-              <th style="width:50px;">N°</th>
-              <th>Élève</th>
-              <th>Classe</th>
-              <th>Matière</th>
-              <th>Devoir</th>
-              <th>Période</th>
-              <th style="width:100px; text-align:center;">Note</th>
-              <th style="width:100px; text-align:center;">Sur</th>
-              <th>Date saisie</th>
-            </tr></thead>
-            <tbody>
-              @for (n of tbl.data; track n.id; let i = $index) {
+        <div class="gs-panel"><div class="gs-panel-body">
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
                 <tr>
-                  <td style="color:#9ca3af;">{{ i + 1 }}</td>
-                  <td><strong>{{ n.etudiant?.nom }}</strong> {{ n.etudiant?.prenom }}</td>
-                  <td>{{ n.classe?.nom }}</td>
-                  <td>{{ n.matiere?.nom }}</td>
-                  <td>{{ n.devoir?.titre || '—' }}</td>
-                  <td>{{ n.periode?.libelle || '—' }}</td>
-                  <td style="text-align:center;">
-                    @if (n.note >= n.sur / 2) {
-                      <nz-tag nzColor="success">{{ n.note }}</nz-tag>
-                    } @else {
-                      <nz-tag nzColor="error">{{ n.note }}</nz-tag>
-                    }
-                  </td>
-                  <td style="text-align:center;">{{ n.sur }}</td>
-                  <td style="color:#6b7280;">{{ n.dateSaisie | date:'dd/MM/yyyy' }}</td>
+                  <th style="width:48px">N°</th>
+                  <th>Élève</th>
+                  <th>Classe</th>
+                  <th>Matière</th>
+                  <th>Devoir</th>
+                  <th>Période</th>
+                  <th style="text-align:center">Note</th>
+                  <th style="text-align:center">Sur</th>
+                  <th>Date saisie</th>
                 </tr>
-              }
-            </tbody>
-          </nz-table>
-        </nz-card>
+              </thead>
+              <tbody>
+                @for (n of filteredNotes(); track n.id; let i = $index) {
+                  <tr>
+                    <td style="color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ i + 1 }}</td>
+                    <td style="font-weight:600">{{ n.etudiant?.nom }} {{ n.etudiant?.prenom }}</td>
+                    <td>{{ n.classe?.nom }}</td>
+                    <td>{{ n.matiere?.nom }}</td>
+                    <td>{{ n.devoir?.titre || '—' }}</td>
+                    <td>{{ n.periode?.libelle || '—' }}</td>
+                    <td style="text-align:center">
+                      @if (n.note >= n.sur / 2) {
+                        <span class="tag tag-success">{{ n.note }}</span>
+                      } @else {
+                        <span class="tag tag-danger">{{ n.note }}</span>
+                      }
+                    </td>
+                    <td style="text-align:center">{{ n.sur }}</td>
+                    <td>{{ n.dateSaisie | date:'dd/MM/yyyy' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="9" class="table-empty">Aucune note ne correspond à ces filtres.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div></div>
       }
     </div>
   `,
 })
 export class EnseignantHistoriqueNotesComponent implements OnInit {
   private http = inject(HttpClient);
-  private message = inject(NzMessageService);
+  private alertService = inject(AlertService);
   private router = inject(Router);
 
   notes = signal<any[]>([]);
@@ -165,7 +146,7 @@ export class EnseignantHistoriqueNotesComponent implements OnInit {
       error: (err: any) => {
         this.loading.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : 'Erreur chargement historique';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }

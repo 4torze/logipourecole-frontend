@@ -13,46 +13,42 @@ export interface TableColumn {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
+    <div style="overflow-x:auto">
+      <table class="table">
+        <thead>
+          <tr>
+            @for (col of columns; track col.key) {
+              <th
+                [style.text-align]="col.align || 'left'"
+                [style.width]="col.width"
+              >
+                {{ col.label }}
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of data; track $index) {
+            <tr>
               @for (col of columns; track col.key) {
-                <th
-                  [class]="thClass(col)"
-                  [style.width]="col.width"
-                >
-                  {{ col.label }}
-                </th>
+                <td [style.text-align]="col.align || 'left'">
+                  <ng-container
+                    [ngTemplateOutlet]="getTemplate(col.key)"
+                    [ngTemplateOutletContext]="{ $implicit: row, row: row }"
+                  />
+                </td>
               }
             </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            @for (row of data; track $index) {
-              <tr class="hover:bg-slate-50/80 transition-colors">
-                @for (col of columns; track col.key) {
-                  <td [class]="tdClass(col)">
-                    <ng-container
-                      [ngTemplateOutlet]="getTemplate(col.key)"
-                      [ngTemplateOutletContext]="{ $implicit: row, row: row }"
-                    />
-                  </td>
-                }
-              </tr>
-            } @empty {
-              <tr>
-                <td [attr.colspan]="columns.length" class="px-6 py-12 text-center text-slate-400">
-                  <div class="flex flex-col items-center gap-3">
-                    <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
-                    <p class="text-sm">{{ emptyText }}</p>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="columns.length" class="table-empty">
+                <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">inbox</span>
+                {{ emptyText }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   `,
 })
@@ -65,25 +61,5 @@ export class TableComponent {
 
   getTemplate(key: string) {
     return this.cellTemplates[key] || null;
-  }
-
-  thClass(col: TableColumn): string {
-    const base = 'px-6 py-4 text-sm font-bold text-slate-700 uppercase tracking-wider';
-    const align: Record<string, string> = {
-      left: 'text-left',
-      right: 'text-right',
-      center: 'text-center',
-    };
-    return `${base} ${align[col.align || 'left']}`;
-  }
-
-  tdClass(col: TableColumn): string {
-    const base = 'px-6 py-5 text-sm text-slate-600';
-    const align: Record<string, string> = {
-      left: 'text-left',
-      right: 'text-right',
-      center: 'text-center',
-    };
-    return `${base} ${align[col.align || 'left']}`;
   }
 }

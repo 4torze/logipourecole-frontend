@@ -87,6 +87,32 @@ export class AuthService {
     return this.http.get<Utilisateur>(`${environment.apiUrl}/auth/profile`);
   }
 
+  updateProfile(data: { nom?: string; prenom?: string; telephone?: string }): Observable<Utilisateur> {
+    return this.http.patch<Utilisateur>(`${environment.apiUrl}/auth/profile`, data).pipe(
+      tap((updated) => {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+        this.currentUserSubject.next(updated);
+        this.currentUser.set(updated);
+      }),
+    );
+  }
+
+  changePassword(motDePasseActuel: string, nouveauMotDePasse: string): Observable<any> {
+    return this.http
+      .post(`${environment.apiUrl}/auth/change-password`, { motDePasseActuel, nouveauMotDePasse })
+      .pipe(
+        tap(() => {
+          const user = this.currentUser();
+          if (user) {
+            const updated = { ...user, mustChangePassword: false };
+            localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+            this.currentUserSubject.next(updated);
+            this.currentUser.set(updated);
+          }
+        }),
+      );
+  }
+
   enable2fa(): Observable<any> {
     return this.http.post(`${environment.apiUrl}/auth/2fa/enable`, {});
   }

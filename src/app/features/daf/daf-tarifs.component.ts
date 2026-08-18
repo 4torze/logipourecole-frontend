@@ -2,7 +2,9 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
+import { filiereLabel } from '../../core/utils/filiere.util';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 
 @Component({
@@ -11,56 +13,104 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
     <div class="page-container">
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="font-bold text-lg text-slate-900">Grilles tarifaires ({{ grilles().length }})</h3>
-        <button (click)="showForm.set(true)" class="flex items-center gap-2 h-10 px-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm">
-          <span class="material-symbols-outlined text-xl">add</span> Fixer un montant
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <h3 style="margin:0">Grilles tarifaires ({{ grilles().length }})</h3>
+        <button (click)="openCreate()" class="btn btn-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span> Fixer un montant
         </button>
       </div>
 
       @if (showForm()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showForm.set(false)">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 class="font-bold text-slate-900">Nouveau tarif</h3>
-              <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="showForm.set(false)"><span class="material-symbols-outlined">close</span></button>
+        <div class="dialog-backdrop" (click)="showForm.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div class="dialog-title" style="display:flex;align-items:center;justify-content:space-between">
+              Nouveau tarif
+              <button class="btn btn-icon btn-secondary" (click)="showForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <div class="p-6 grid grid-cols-3 gap-4">
-              <select [(ngModel)]="newGrille.classeId" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm col-span-3"><option value="">Classe</option>@for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }} ({{ c.filiere?.nom || '' }})</option> }</select>
-              <select [(ngModel)]="newGrille.anneeScolaireId" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm col-span-3"><option value="">Année scolaire</option>@for (a of annees(); track a.id) { <option [value]="a.id">{{ a.libelle }}</option> }</select>
-              <input type="number" placeholder="Montant total (FCFA)" [(ngModel)]="newGrille.montantTotal" class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm col-span-3" />
-              <div class="col-span-3 flex gap-3"><button (click)="createGrille()" class="h-10 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover text-sm">Créer</button><button (click)="showForm.set(false)" class="h-10 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-sm">Annuler</button></div>
+            <div class="field">
+              <label>Classe</label>
+              <select [(ngModel)]="newGrille.classeId" class="input">
+                <option value="">Classe</option>
+                @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }} ({{ filiereLabel(c) }})</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label>Année scolaire</label>
+              <select [(ngModel)]="newGrille.anneeScolaireId" class="input">
+                <option value="">Année scolaire</option>
+                @for (a of annees(); track a.id) { <option [value]="a.id">{{ a.libelle }}</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label>Montant total (FCFA)</label>
+              <input type="number" placeholder="Montant total (FCFA)" [(ngModel)]="newGrille.montantTotal" class="input" />
+            </div>
+            <div class="dialog-actions">
+              <button (click)="createGrille()" class="btn btn-primary">Créer</button>
+              <button (click)="showForm.set(false)" class="btn btn-secondary">Annuler</button>
             </div>
           </div>
         </div>
       }
 
-      <div class="bg-white rounded-xl border border-slate-200 shadow-card p-6">
-        <div class="overflow-x-auto rounded-lg border border-slate-200">
-          <table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left font-semibold">Classe</th><th class="px-4 py-3 text-left font-semibold">Filière</th><th class="px-4 py-3 text-left font-semibold">Année</th><th class="px-4 py-3 text-left font-semibold">Montant total (FCFA)</th><th class="px-4 py-3 text-left font-semibold">Actions</th></tr></thead>
-          <tbody class="divide-y divide-slate-50">
+      @if (showEditForm(); as g) {
+        <div class="dialog-backdrop" (click)="showEditForm.set(null)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div class="dialog-title" style="display:flex;align-items:center;justify-content:space-between">
+              Modifier le tarif
+              <button class="btn btn-icon btn-secondary" (click)="showEditForm.set(null)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            </div>
+            <div class="gs-well">
+              <div style="font-weight:600">{{ g.classe?.nom }} ({{ filiereLabel(g.classe) }})</div>
+              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-top:2px">{{ g.anneeScolaire?.libelle }}</div>
+            </div>
+            <div class="field">
+              <label>Montant total (FCFA)</label>
+              <input type="number" placeholder="Montant total (FCFA)" [(ngModel)]="editMontant" class="input" />
+            </div>
+            <div class="dialog-actions">
+              <button (click)="updateGrille()" [disabled]="editSaving()" class="btn btn-primary">
+                @if (editSaving()) { <span class="material-symbols-outlined" style="font-size:16px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">save</span> }
+                Enregistrer
+              </button>
+              <button (click)="showEditForm.set(null)" class="btn btn-secondary">Annuler</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="gs-panel"><div class="gs-panel-body">
+        <div style="overflow-x:auto">
+          <table class="table"><thead><tr><th>Classe</th><th>Filière</th><th>Année</th><th>Montant total (FCFA)</th><th>Actions</th></tr></thead>
+          <tbody>
             @for (g of pagedGrilles(); track g.id) {
-              <tr class="hover:bg-slate-50"><td class="px-4 py-3 text-slate-700">{{ g.classe?.nom }}</td><td class="px-4 py-3 text-slate-600">{{ g.classe?.filiere?.nom }}</td><td class="px-4 py-3 text-slate-600">{{ g.anneeScolaire?.libelle }}</td><td class="px-4 py-3 font-semibold text-slate-900">{{ g.montantTotal?.toLocaleString('fr-FR') }}</td>
-                <td class="px-4 py-3"><button (click)="confirmDeleteGrille(g.id)" class="p-1.5 rounded-lg hover:bg-slate-100 text-red-500"><span class="material-symbols-outlined text-lg">delete</span></button></td>
+              <tr><td>{{ g.classe?.nom }}</td><td>{{ filiereLabel(g.classe) }}</td><td>{{ g.anneeScolaire?.libelle }}</td><td style="font-weight:600">{{ g.montantTotal?.toLocaleString('fr-FR') }}</td>
+                <td><div style="display:flex;gap:4px"><button (click)="openEdit(g)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button><button (click)="confirmDeleteGrille(g)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></div></td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="text-center text-slate-400 py-8">Aucune grille tarifaire enregistrée</td></tr>
+              <tr><td colspan="5" class="table-empty">Aucune grille tarifaire enregistrée</td></tr>
             }
           </tbody></table>
         </div>
         <app-pagination [page]="page()" [pageSize]="pageSize" [totalItems]="grilles().length" (pageChange)="page.set($event)"></app-pagination>
-      </div>
+      </div></div>
     </div>
   `,
 })
 export class DafTarifsComponent implements OnInit {
+  filiereLabel = filiereLabel;
   private http = inject(HttpClient);
+  private alertService = inject(AlertService);
 
   classes = signal<any[]>([]);
   annees = signal<any[]>([]);
   grilles = signal<any[]>([]);
   showForm = signal(false);
   newGrille: any = { classeId: '', anneeScolaireId: '', montantTotal: 0 };
+
+  showEditForm = signal<any | null>(null);
+  editSaving = signal(false);
+  editMontant: number = 0;
 
   pageSize = 10;
   page = signal(1);
@@ -96,29 +146,67 @@ export class DafTarifsComponent implements OnInit {
     });
   }
 
+  openCreate() {
+    this.newGrille = { classeId: '', anneeScolaireId: '', montantTotal: 0 };
+    this.showForm.set(true);
+  }
+
   createGrille() {
     if (!this.newGrille.classeId || !this.newGrille.anneeScolaireId || !this.newGrille.montantTotal) {
-      alert('Classe, année et montant requis');
+      this.alertService.error('Classe, année et montant requis');
       return;
     }
     this.http.post(`${environment.apiUrl}/dsi/grilles-tarifaires`, { ...this.newGrille, montantTotal: +this.newGrille.montantTotal }).subscribe({
       next: () => {
+        this.alertService.success('Grille tarifaire créée');
         this.loadGrilles();
         this.showForm.set(false);
-        this.newGrille = { classeId: '', anneeScolaireId: '', montantTotal: 0 };
       },
-      error: (e) => alert('Erreur: ' + (e.error?.message || 'échec')),
+      error: (e) => this.alertService.error(e.error?.message || 'Erreur lors de la création'),
     });
   }
 
-  confirmDeleteGrille(id: string) {
-    if (confirm('Supprimer ?')) this.deleteGrille(id);
+  openEdit(g: any) {
+    this.editMontant = g.montantTotal;
+    this.showEditForm.set(g);
+  }
+
+  updateGrille() {
+    const g = this.showEditForm();
+    if (!g) return;
+    if (!this.editMontant || this.editMontant <= 0) {
+      this.alertService.error('Le montant doit être supérieur à 0');
+      return;
+    }
+    this.editSaving.set(true);
+    this.http.patch(`${environment.apiUrl}/dsi/grilles-tarifaires/${g.id}`, { montantTotal: +this.editMontant }).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.alertService.success('Tarif mis à jour');
+        this.showEditForm.set(null);
+        this.loadGrilles();
+      },
+      error: (e) => {
+        this.editSaving.set(false);
+        this.alertService.error(e.error?.message || 'Erreur lors de la mise à jour');
+      },
+    });
+  }
+
+  async confirmDeleteGrille(g: any) {
+    const ok = await this.alertService.confirm({
+      title: 'Supprimer cette grille tarifaire ?',
+      html: `Le tarif de <strong>${g.classe?.nom || ''}</strong> pour <strong>${g.anneeScolaire?.libelle || ''}</strong> sera définitivement supprimé.`,
+      confirmText: 'Supprimer',
+      danger: true,
+    });
+    if (ok) this.deleteGrille(g.id);
   }
 
   deleteGrille(id: string) {
     this.http.delete(`${environment.apiUrl}/dsi/grilles-tarifaires/${id}`).subscribe({
-      next: () => this.loadGrilles(),
-      error: (e) => alert('Erreur: ' + (e.error?.message || 'échec')),
+      next: () => { this.alertService.success('Grille tarifaire supprimée'); this.loadGrilles(); },
+      error: (e) => this.alertService.error(e.error?.message || 'Erreur lors de la suppression'),
     });
   }
 }

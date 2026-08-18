@@ -2,20 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzFormModule } from 'ng-zorro-antd/form';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalService } from 'ng-zorro-antd/modal';
-import { NzModalModule } from 'ng-zorro-antd/modal';
+import { AlertService } from '../../core/services/alert.service';
 import { DevoirService, CreateDevoirDto } from '../../core/services/devoir.service';
 import { Devoir } from '../../core/models';
 import { environment } from '../../../environments/environment';
@@ -28,135 +15,220 @@ interface Affectation {
 @Component({
   selector: 'app-devoirs',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule,
-    NzCardModule, NzTableModule, NzButtonModule, NzFormModule,
-    NzInputModule, NzSelectModule, NzTagModule, NzIconModule, NzInputNumberModule, NzGridModule, NzEmptyModule,
-    NzModalModule,
-  ],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-container">
-      <div class="section-header">
-        <h1 class="page-title" style="margin:0;">Devoirs & soumissions</h1>
-        <div class="actions-row" style="margin:0;">
-          <button nz-button (click)="showFilters.set(true)"><span nz-icon nzType="filter"></span> Filtres</button>
-          <button nz-button nzType="primary" (click)="openCreate()"><span nz-icon nzType="plus"></span> Nouveau devoir</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+        <h1 style="margin:0">Devoirs &amp; soumissions</h1>
+        <div style="display:flex;gap:8px">
+          <button (click)="showFilters.set(true)" class="btn btn-secondary">
+            <span class="material-symbols-outlined" style="font-size:18px">filter_alt</span> Filtres
+          </button>
+          <button (click)="openCreate()" class="btn btn-primary">
+            <span class="material-symbols-outlined" style="font-size:18px">add</span> Nouveau devoir
+          </button>
         </div>
       </div>
 
-      <nz-modal [nzVisible]="showFilters()" (nzVisibleChange)="showFilters.set($event)" nzTitle="Filtres" [nzFooter]="null" (nzOnCancel)="showFilters.set(false)">
-        <ng-container *nzModalContent>
-          <div nz-row [nzGutter]="[12,12]">
-            <div nz-col [nzSpan]="24">
-              <nz-select [(ngModel)]="selectedClasseId" (ngModelChange)="onClasseChange()" nzPlaceHolder="Classe" style="width:100%;">
-                @for (a of affectations(); track a.classe.id) { <nz-option [nzValue]="a.classe.id" [nzLabel]="a.classe.nom"></nz-option> }
-              </nz-select>
-            </div>
-            <div nz-col [nzSpan]="24">
-              <nz-select [(ngModel)]="selectedMatiereId" nzPlaceHolder="Matière" style="width:100%;">
-                @for (m of matieresForClasse(); track m.id) { <nz-option [nzValue]="m.id" [nzLabel]="m.nom"></nz-option> }
-              </nz-select>
-            </div>
-          </div>
-          <div class="actions-row">
-            <button nz-button nzType="primary" (click)="applyFilters()" [disabled]="!selectedClasseId"><span nz-icon nzType="check"></span> Appliquer</button>
-            <button nz-button (click)="showFilters.set(false)">Annuler</button>
-          </div>
-        </ng-container>
-      </nz-modal>
-
-      <nz-modal [nzVisible]="showCreate()" (nzVisibleChange)="showCreate.set($event)" nzTitle="Nouveau devoir" [nzFooter]="null" (nzOnCancel)="showCreate.set(false)">
-        <ng-container *nzModalContent>
-          <form (ngSubmit)="create()" nz-form>
-            <nz-form-item><nz-form-label>Titre</nz-form-label><nz-form-control><input nz-input type="text" [(ngModel)]="newDevoir.titre" name="titre" placeholder="Titre" required /></nz-form-control></nz-form-item>
-            <nz-form-item><nz-form-label>Description</nz-form-label><nz-form-control><input nz-input type="text" [(ngModel)]="newDevoir.description" name="description" placeholder="Description" /></nz-form-control></nz-form-item>
-            <nz-form-item><nz-form-label>Date limite</nz-form-label><nz-form-control><input nz-input type="datetime-local" [(ngModel)]="newDevoir.dateLimite" name="dateLimite" required /></nz-form-control></nz-form-item>
-            <nz-form-item><nz-form-label>Points</nz-form-label><nz-form-control><nz-input-number [(ngModel)]="newDevoir.points" name="points" [nzMin]="1" [nzPlaceHolder]="'Points'" style="width:100%;"></nz-input-number></nz-form-control></nz-form-item>
-            <nz-form-item>
-              <button nz-button nzType="primary" type="submit" [disabled]="saving() || !selectedClasseId || !selectedMatiereId">
-                @if (saving()) { <span nz-icon nzType="loading"></span> } Créer
-              </button>
-              <button nz-button type="button" (click)="showCreate.set(false)" style="margin-left:8px;">Annuler</button>
-            </nz-form-item>
-          </form>
-        </ng-container>
-      </nz-modal>
-
-      <nz-card nzTitle="Devoirs">
-        <nz-table #table [nzData]="devoirs()" [nzPageSize]="20" nzSize="small">
-          <thead><tr><th>Titre</th><th>Description</th><th>Date limite</th><th>Points</th><th>Soumissions</th><th>Actions</th></tr></thead>
-          <tbody>
-            @for (d of table.data; track d.id) {
-              <tr>
-                <td>{{ d.titre }}</td>
-                <td>{{ d.description || '—' }}</td>
-                <td>{{ d.dateLimite | date:'dd/MM/yyyy HH:mm' }}</td>
-                <td>{{ d.points }}</td>
-                <td>
-                  <nz-tag>{{ d.soumissions?.length || 0 }}</nz-tag>
-                  @if (d.soumissions && d.soumissions.length > 0) {
-                    <button nz-button nzType="link" nzSize="small" (click)="viewSoumissions(d)">Voir</button>
-                  }
-                </td>
-                <td>
-                  <button nz-button nzType="text" nzSize="small" (click)="remove(d.id)"><span nz-icon nzType="delete" style="color:#dc2626;"></span></button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </nz-table>
-      </nz-card>
-
-      @if (selectedDevoir()) {
-        <nz-card style="margin-top:24px;" [nzTitle]="'Soumissions — ' + selectedDevoir()!.titre">
-          @if (soumissions().length > 0) {
-            <nz-table #subTable [nzData]="soumissions()" [nzPageSize]="20" nzSize="small">
-              <thead><tr><th>Étudiant</th><th>Date</th><th>Contenu</th><th>Note</th><th>Action</th></tr></thead>
-              <tbody>
-                @for (s of subTable.data; track s.id) {
-                  <tr>
-                    <td>{{ s.etudiant?.nom }} {{ s.etudiant?.prenom }}</td>
-                    <td>{{ s.dateSoumission | date:'dd/MM/yyyy HH:mm' }}</td>
-                    <td>{{ s.contenu || s.fichierUrl || '—' }}</td>
-                    <td>{{ s.note !== null && s.note !== undefined ? s.note + '/' + selectedDevoir()!.points : '—' }}</td>
-                    <td>
-                      <button nz-button nzType="primary" nzSize="small" (click)="openNoteModal(s)" [disabled]="s.note !== null && s.note !== undefined">
-                        Noter
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </nz-table>
-          } @else {
-            <nz-empty nzDescription="Aucune soumission pour ce devoir"></nz-empty>
-          }
-          <button nz-button (click)="closeSoumissions()" style="margin-top:12px;">Fermer</button>
-        </nz-card>
+      @if (selectedClasseId || selectedMatiereId) {
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-bottom:16px">
+          <span class="material-symbols-outlined" style="font-size:16px">school</span>
+          {{ classeLabel() }} @if (matiereLabel()) { <span>— {{ matiereLabel() }}</span> }
+        </div>
       }
 
-      <nz-modal [nzVisible]="notingSoumission()" (nzVisibleChange)="notingSoumission.set($event)" nzTitle="Noter la soumission" [nzFooter]="null" (nzOnCancel)="cancelNote()">
-        <ng-container *nzModalContent>
-          <form (ngSubmit)="submitNote()" nz-form>
-            <nz-form-item><nz-form-label>Note /{{ selectedDevoir()?.points }}</nz-form-label><nz-form-control><nz-input-number [(ngModel)]="noteForm.note" name="note" [nzMin]="0" [nzMax]="selectedDevoir()!.points" [nzPlaceHolder]="'Note'" style="width:100%;"></nz-input-number></nz-form-control></nz-form-item>
-            <nz-form-item><nz-form-label>Commentaire</nz-form-label><nz-form-control><input nz-input type="text" [(ngModel)]="noteForm.commentaire" name="commentaire" placeholder="Commentaire" /></nz-form-control></nz-form-item>
-            <nz-form-item>
-              <button nz-button nzType="primary" type="submit" [disabled]="notingSaving()">
-                @if (notingSaving()) { <span nz-icon nzType="loading"></span> } Enregistrer
-              </button>
-              <button nz-button type="button" (click)="cancelNote()" style="margin-left:8px;">Annuler</button>
-            </nz-form-item>
-          </form>
-        </ng-container>
-      </nz-modal>
+      <div class="gs-panel">
+        <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Devoirs</h3></div>
+        <div class="gs-panel-body">
+          <div style="overflow-x:auto">
+          <table class="table">
+            <thead>
+              <tr><th>Titre</th><th>Description</th><th>Date limite</th><th>Points</th><th>Soumissions</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              @for (d of devoirs(); track d.id) {
+                <tr>
+                  <td style="font-weight:600">{{ d.titre }}</td>
+                  <td>{{ d.description || '—' }}</td>
+                  <td>{{ d.dateLimite | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ d.points }}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span class="tag tag-neutral">{{ d.soumissions?.length || 0 }}</span>
+                      @if (d.soumissions && d.soumissions.length > 0) {
+                        <button (click)="viewSoumissions(d)" class="btn btn-secondary btn-sm">Voir</button>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <button (click)="remove(d.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="table-empty">
+                  <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">assignment</span>
+                  Aucun devoir créé pour cette sélection.
+                </td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+
+      @if (selectedDevoir()) {
+        <div class="gs-panel">
+          <div class="gs-panel-head">
+            <h3 style="margin:0;font-size:16px">Soumissions — {{ selectedDevoir()!.titre }}</h3>
+            <button (click)="closeSoumissions()" class="btn btn-icon btn-secondary"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <div class="gs-panel-body">
+          @if (soumissions().length > 0) {
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead>
+                  <tr><th>Étudiant</th><th>Date</th><th>Contenu</th><th>Note</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (s of soumissions(); track s.id) {
+                    <tr>
+                      <td style="font-weight:600">{{ s.etudiant?.nom }} {{ s.etudiant?.prenom }}</td>
+                      <td>{{ s.dateSoumission | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td>{{ s.contenu || s.fichierUrl || '—' }}</td>
+                      <td>{{ s.note !== null && s.note !== undefined ? s.note + '/' + selectedDevoir()!.points : '—' }}</td>
+                      <td>
+                        <button (click)="openNoteModal(s)" [disabled]="s.note !== null && s.note !== undefined" class="btn btn-primary btn-sm">Noter</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="table-empty">
+              <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">inbox</span>
+              Aucune soumission pour ce devoir
+            </div>
+          }
+          </div>
+        </div>
+      }
     </div>
+
+    <!-- Modal Filtres -->
+    @if (showFilters()) {
+      <div class="dialog-backdrop" (click)="showFilters.set(false)">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3 class="dialog-title">Filtres</h3>
+            <button class="btn btn-icon btn-secondary" (click)="showFilters.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <div class="field">
+            <label>Classe</label>
+            <select [(ngModel)]="selectedClasseId" (ngModelChange)="onClasseChange()" class="input">
+              @for (a of affectations(); track a.classe.id) { <option [value]="a.classe.id">{{ a.classe.nom }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label>Matière</label>
+            <select [(ngModel)]="selectedMatiereId" class="input">
+              @for (m of matieresForClasse(); track m.id) { <option [value]="m.id">{{ m.nom }}</option> }
+            </select>
+          </div>
+          <div class="dialog-actions">
+            <button (click)="showFilters.set(false)" class="btn btn-secondary">Annuler</button>
+            <button (click)="applyFilters()" [disabled]="!selectedClasseId" class="btn btn-primary">Appliquer</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Nouveau devoir -->
+    @if (showCreate()) {
+      <div class="dialog-backdrop" (click)="showCreate.set(false)">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3 class="dialog-title">Nouveau devoir</h3>
+            <button class="btn btn-icon btn-secondary" (click)="showCreate.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <form (ngSubmit)="create()" style="display:flex;flex-direction:column;gap:14px">
+            <p style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Choisissez la classe et la matière concernées : vous pouvez créer des devoirs pour chacune de vos classes affectées.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="field">
+                <label>Classe</label>
+                <select [(ngModel)]="newDevoir.classeId" (ngModelChange)="onNewDevoirClasseChange()" name="classeId" required class="input">
+                  <option value="" disabled>Choisir…</option>
+                  @for (a of affectations(); track a.classe.id) { <option [value]="a.classe.id">{{ a.classe.nom }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label>Matière</label>
+                <select [(ngModel)]="newDevoir.matiereId" name="matiereId" required class="input">
+                  <option value="" disabled>Choisir…</option>
+                  @for (m of matieresForNewDevoirClasse(); track m.id) { <option [value]="m.id">{{ m.nom }}</option> }
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Titre</label>
+              <input type="text" [(ngModel)]="newDevoir.titre" name="titre" placeholder="Titre" required class="input" />
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <input type="text" [(ngModel)]="newDevoir.description" name="description" placeholder="Optionnel" class="input" />
+            </div>
+            <div class="field">
+              <label>Date limite</label>
+              <input type="datetime-local" [(ngModel)]="newDevoir.dateLimite" name="dateLimite" required class="input" />
+            </div>
+            <div class="field">
+              <label>Points</label>
+              <input type="number" min="1" [(ngModel)]="newDevoir.points" name="points" placeholder="Points" class="input" />
+            </div>
+            <div class="dialog-actions">
+              <button type="button" (click)="showCreate.set(false)" class="btn btn-secondary">Annuler</button>
+              <button type="submit" [disabled]="saving() || !newDevoir.classeId || !newDevoir.matiereId" class="btn btn-primary">
+                @if (saving()) { <span class="material-symbols-outlined" style="font-size:14px">progress_activity</span> } Créer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Noter la soumission -->
+    @if (notingSoumission()) {
+      <div class="dialog-backdrop" (click)="cancelNote()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3 class="dialog-title">Noter la soumission</h3>
+            <button class="btn btn-icon btn-secondary" (click)="cancelNote()"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <form (ngSubmit)="submitNote()" style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <label>Note /{{ selectedDevoir()?.points }}</label>
+              <input type="number" min="0" [max]="selectedDevoir()?.points" [(ngModel)]="noteForm.note" name="note" placeholder="Note" class="input" />
+            </div>
+            <div class="field">
+              <label>Commentaire</label>
+              <input type="text" [(ngModel)]="noteForm.commentaire" name="commentaire" placeholder="Optionnel" class="input" />
+            </div>
+            <div class="dialog-actions">
+              <button type="button" (click)="cancelNote()" class="btn btn-secondary">Annuler</button>
+              <button type="submit" [disabled]="notingSaving()" class="btn btn-primary">
+                @if (notingSaving()) { <span class="material-symbols-outlined" style="font-size:14px">progress_activity</span> } Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
   `,
 })
 export class DevoirsComponent implements OnInit {
   private devoirService = inject(DevoirService);
   private http = inject(HttpClient);
-  private message = inject(NzMessageService);
-  private modal = inject(NzModalService);
+  private alertService = inject(AlertService);
 
   affectations = signal<Affectation[]>([]);
   matieresForClasse = signal<{ id: string; nom: string }[]>([]);
@@ -174,10 +246,18 @@ export class DevoirsComponent implements OnInit {
   selectedClasseId = '';
   selectedMatiereId = '';
 
-  newDevoir: Partial<CreateDevoirDto> = { titre: '', description: '', dateLimite: '', points: 20 };
+  newDevoir: Partial<CreateDevoirDto> = { classeId: '', matiereId: '', titre: '', description: '', dateLimite: '', points: 20 };
 
   ngOnInit() {
     this.loadAffectations();
+  }
+
+  classeLabel(): string {
+    return this.affectations().find((a) => a.classe.id === this.selectedClasseId)?.classe.nom || '';
+  }
+
+  matiereLabel(): string {
+    return this.matieresForClasse().find((m) => m.id === this.selectedMatiereId)?.nom || '';
   }
 
   loadAffectations() {
@@ -188,7 +268,7 @@ export class DevoirsComponent implements OnInit {
       },
       error: (err: any) => {
         const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur chargement affectations';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }
@@ -208,10 +288,27 @@ export class DevoirsComponent implements OnInit {
     });
   }
 
+  matieresForNewDevoirClasse(): { id: string; nom: string }[] {
+    return this.affectations().find((a) => a.classe.id === this.newDevoir.classeId)?.matieres || [];
+  }
+
+  onNewDevoirClasseChange() {
+    const matieres = this.matieresForNewDevoirClasse();
+    this.newDevoir.matiereId = matieres.length > 0 ? matieres[0].id : '';
+  }
+
   openCreate() {
-    if (!this.selectedClasseId || !this.selectedMatiereId) {
-      this.showFilters.set(true);
-      return;
+    // Pré-sélectionne la classe/matière actuellement filtrée, mais reste modifiable :
+    // un professeur affecté à plusieurs classes doit pouvoir choisir explicitement
+    // pour quelle classe/matière il crée ce devoir précis.
+    this.newDevoir = {
+      classeId: this.selectedClasseId || this.affectations()[0]?.classe.id || '',
+      matiereId: '',
+      titre: '', description: '', dateLimite: '', points: 20,
+    };
+    this.onNewDevoirClasseChange();
+    if (this.selectedMatiereId && this.newDevoir.classeId === this.selectedClasseId) {
+      this.newDevoir.matiereId = this.selectedMatiereId;
     }
     this.showCreate.set(true);
   }
@@ -222,10 +319,10 @@ export class DevoirsComponent implements OnInit {
   }
 
   create() {
-    if (!this.selectedClasseId || !this.selectedMatiereId) return;
+    if (!this.newDevoir.classeId || !this.newDevoir.matiereId) return;
     const dto: CreateDevoirDto = {
-      classeId: this.selectedClasseId,
-      matiereId: this.selectedMatiereId,
+      classeId: this.newDevoir.classeId,
+      matiereId: this.newDevoir.matiereId,
       titre: this.newDevoir.titre || '',
       description: this.newDevoir.description,
       dateLimite: this.newDevoir.dateLimite || '',
@@ -236,33 +333,36 @@ export class DevoirsComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.showCreate.set(false);
-        this.newDevoir = { titre: '', description: '', dateLimite: '', points: 20 };
-        this.message.success('Devoir créé');
+        // On bascule le filtre affiché sur la classe/matière du devoir créé, pour que
+        // l'enseignant voie immédiatement le résultat même s'il a créé pour une autre classe.
+        this.selectedClasseId = dto.classeId;
+        const aff = this.affectations().find((a) => a.classe.id === dto.classeId);
+        this.matieresForClasse.set(aff?.matieres || []);
+        this.selectedMatiereId = dto.matiereId;
         this.loadDevoirs();
+        this.alertService.success('Devoir créé');
       },
       error: (err: any) => {
         this.saving.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur création';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }
 
-  remove(id: string) {
-    this.modal.confirm({
-      nzTitle: 'Supprimer ce devoir ?',
-      nzContent: 'Cette action supprimera le devoir et toutes les notes associées. Cette opération est irréversible.',
-      nzOkText: 'Supprimer',
-      nzOkDanger: true,
-      nzCancelText: 'Annuler',
-      nzOnOk: () => {
-        this.devoirService.remove(id).subscribe({
-          next: () => { this.message.success('Devoir supprimé'); this.loadDevoirs(); },
-          error: (err: any) => {
-            const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur suppression';
-            this.message.error(msg);
-          },
-        });
+  async remove(id: string) {
+    const ok = await this.alertService.confirm({
+      title: 'Supprimer ce devoir ?',
+      text: 'Cette action supprimera le devoir et toutes les notes associées. Cette opération est irréversible.',
+      confirmText: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    this.devoirService.remove(id).subscribe({
+      next: () => { this.alertService.success('Devoir supprimé'); this.loadDevoirs(); },
+      error: (err: any) => {
+        const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur suppression';
+        this.alertService.error(msg);
       },
     });
   }
@@ -300,7 +400,7 @@ export class DevoirsComponent implements OnInit {
       next: () => {
         this.notingSaving.set(false);
         this.notingSoumission.set(false);
-        this.message.success('Note enregistrée');
+        this.alertService.success('Note enregistrée');
         this.currentSoumissionId = '';
         this.noteForm = { note: null, commentaire: '' };
         this.loadDevoirs();
@@ -314,7 +414,7 @@ export class DevoirsComponent implements OnInit {
       error: (err: any) => {
         this.notingSaving.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur notation';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }

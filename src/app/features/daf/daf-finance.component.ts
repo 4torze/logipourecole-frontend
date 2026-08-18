@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent } from '../../shared/components/pagination.component';
 
@@ -10,71 +11,106 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
   standalone: true,
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
-    <div class="max-w-[1440px] mx-auto">
-      <div class="bg-white rounded-xl border border-slate-200 shadow-card p-6">
-        <div class="flex items-center justify-between mb-5">
-          <h3 class="font-bold text-lg text-slate-900">Tableau financier</h3>
-          <button (click)="relanceGroupee()" [disabled]="relanceLoading()" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm disabled:opacity-50">
-            <span class="material-symbols-outlined text-lg">sms</span> Relance SMS groupée
+    <div class="page-container">
+      <div class="gs-panel">
+        <div class="gs-panel-head">
+          <h3 style="margin:0;font-size:18px">Tableau financier</h3>
+          <button class="btn btn-secondary" (click)="relanceGroupee()" [disabled]="relanceLoading()">
+            <span class="material-symbols-outlined" style="font-size:18px">sms</span> Relance SMS groupée
           </button>
         </div>
+        <div class="gs-panel-body">
+          <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+            <select [(ngModel)]="filters.classeId" (ngModelChange)="onFilterClasseChange()" class="input" style="flex:1;min-width:140px">
+              <option value="">Toutes les classes</option>
+              @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
+            </select>
+            <select [(ngModel)]="filters.anneeScolaireId" (ngModelChange)="onFilterChange()" class="input" style="flex:1;min-width:140px">
+              <option value="">Année scolaire</option>
+              @for (a of annees(); track a.id) { <option [value]="a.id">{{ a.libelle }}</option> }
+            </select>
+            <select [(ngModel)]="filters.statutPaiement" (ngModelChange)="onFilterChange()" class="input" style="flex:1;min-width:140px">
+              <option value="">Statut paiement</option>
+              <option value="solde">Soldé (à jour)</option>
+              <option value="retard">En retard</option>
+            </select>
+            <select [(ngModel)]="filters.versementId" (ngModelChange)="onFilterChange()" class="input" style="flex:1;min-width:140px">
+              <option value="">Tous les versements</option>
+              @for (v of versements(); track v.id) { <option [value]="v.id">{{ v.ordre }} — {{ v.libelle }}</option> }
+            </select>
+            <input type="text" [(ngModel)]="filters.search" (ngModelChange)="onSearchChange($event)" placeholder="Rechercher par nom ou téléphone..." class="input" style="flex:2;min-width:220px" />
+          </div>
 
-        <div class="flex gap-2.5 mb-4 flex-wrap">
-          <select [(ngModel)]="filters.classeId" (ngModelChange)="onFilterChange()" class="flex-1 min-w-[140px] h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Toutes les classes</option>@for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }</select>
-          <select [(ngModel)]="filters.anneeScolaireId" (ngModelChange)="onFilterChange()" class="flex-1 min-w-[140px] h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Année scolaire</option>@for (a of annees(); track a.id) { <option [value]="a.id">{{ a.libelle }}</option> }</select>
-          <select [(ngModel)]="filters.statutPaiement" (ngModelChange)="onFilterChange()" class="flex-1 min-w-[140px] h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Statut paiement</option><option value="solde">Soldé (à jour)</option><option value="retard">En retard</option></select>
-          <select [(ngModel)]="filters.versementId" (ngModelChange)="onFilterChange()" class="flex-1 min-w-[140px] h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm"><option value="">Tous les versements</option>@for (v of versements(); track v.id) { <option [value]="v.id">{{ v.ordre }} — {{ v.libelle }}</option> }</select>
-          <input type="text" [(ngModel)]="filters.search" (ngModelChange)="onSearchChange($event)" placeholder="Rechercher par nom ou téléphone..." class="flex-[2] min-w-[220px] h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm" />
-        </div>
-
-        <div class="overflow-x-auto rounded-lg border border-slate-200">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-              <tr><th class="px-4 py-3 text-left font-semibold">Étudiant</th><th class="px-4 py-3 text-left font-semibold">Classe</th><th class="px-4 py-3 text-right font-semibold">Montant total</th><th class="px-4 py-3 text-right font-semibold">Payé</th><th class="px-4 py-3 text-right font-semibold">Reste</th><th class="px-4 py-3 text-left font-semibold">Statut</th><th class="px-4 py-3 text-left font-semibold">Actions</th></tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-              @for (row of tableauFinancier(); track row.etudiantId) {
-                <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3 font-medium text-slate-900">{{ row.nom }} {{ row.prenom }}</td>
-                  <td class="px-4 py-3 text-slate-500">{{ row.classeNom || row.niveau || '-' }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums text-slate-700">{{ row.montantTotal?.toLocaleString('fr-FR') }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums text-emerald-600 font-medium">{{ row.totalPaye?.toLocaleString('fr-FR') }}</td>
-                  <td class="px-4 py-3 text-right tabular-nums text-red-600 font-medium">{{ row.reste?.toLocaleString('fr-FR') }}</td>
-                  <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-semibold" [class]="row.statut === 'À jour' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'"><span class="w-1.5 h-1.5 rounded-full" [class]="row.statut === 'À jour' ? 'bg-emerald-600' : 'bg-red-600'"></span>{{ row.statut }}</span></td>
-                  <td class="px-4 py-3"><div class="flex gap-1"><button (click)="openPaiementsDrawer(row)" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="Voir les paiements"><span class="material-symbols-outlined text-lg">visibility</span></button>@if (row.statut !== 'À jour') { <button (click)="relanceEtudiant(row.etudiantId)" [disabled]="relanceId() === row.etudiantId" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-50" title="Relance SMS"><span class="material-symbols-outlined text-lg">notifications_active</span></button> }</div></td>
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Étudiant</th>
+                  <th>Classe</th>
+                  <th style="text-align:right">Montant total</th>
+                  <th style="text-align:right">Payé</th>
+                  <th style="text-align:right">Reste</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
                 </tr>
-              } @empty {
-                <tr><td colspan="7" class="text-center text-slate-400 py-8">@if (tableLoading()) { Chargement... } @else { Aucun étudiant trouvé. Vérifiez qu'une année scolaire est active et qu'il y a des inscriptions. }</td></tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (row of tableauFinancier(); track row.etudiantId) {
+                  <tr>
+                    <td style="font-weight:600">{{ row.nom }} {{ row.prenom }}</td>
+                    <td style="color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ row.classeNom || row.niveau || '-' }}</td>
+                    <td style="text-align:right">{{ row.montantTotal?.toLocaleString('fr-FR') }}</td>
+                    <td style="text-align:right;font-weight:600;color:#1a7a3f">{{ row.totalPaye?.toLocaleString('fr-FR') }}</td>
+                    <td style="text-align:right;font-weight:600;color:var(--color-accent-700)">{{ row.reste?.toLocaleString('fr-FR') }}</td>
+                    <td><span class="tag" [class]="row.statut === 'À jour' ? 'tag-success' : 'tag-danger'">{{ row.statut }}</span></td>
+                    <td>
+                      <div style="display:flex;gap:4px">
+                        <button class="btn btn-icon btn-secondary" (click)="openPaiementsDrawer(row)" title="Voir les paiements"><span class="material-symbols-outlined" style="font-size:18px">visibility</span></button>
+                        @if (row.statut !== 'À jour') {
+                          <button class="btn btn-icon btn-secondary" (click)="relanceEtudiant(row.etudiantId)" [disabled]="relanceId() === row.etudiantId" title="Relance SMS"><span class="material-symbols-outlined" style="font-size:18px">notifications_active</span></button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" style="text-align:center;padding:32px 0;color:color-mix(in srgb, var(--color-text) 50%, transparent)">@if (tableLoading()) { Chargement... } @else { Aucun étudiant trouvé. Vérifiez qu'une année scolaire est active et qu'il y a des inscriptions. }</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-pagination [page]="tablePage()" [pageSize]="tablePageSize" [totalItems]="tableTotal()" (pageChange)="onTablePageChange($event)"></app-pagination>
         </div>
-        <app-pagination [page]="tablePage()" [pageSize]="tablePageSize" [totalItems]="tableTotal()" (pageChange)="onTablePageChange($event)"></app-pagination>
       </div>
     </div>
 
     @if (drawerVisible()) {
-      <div class="fixed inset-0 z-50 flex justify-end bg-black/40" (click)="drawerVisible.set(false)">
-        <div class="bg-white w-full max-w-[640px] h-full overflow-y-auto shadow-xl" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h3 class="font-bold text-slate-900">{{ drawerTitle() }}</h3>
-            <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" (click)="drawerVisible.set(false)"><span class="material-symbols-outlined">close</span></button>
+      <div class="dialog-backdrop" style="justify-content:flex-end;align-items:stretch;padding:0" (click)="drawerVisible.set(false)">
+        <div style="width:min(640px,100%);height:100%;overflow-y:auto;background:var(--color-surface);border-left:1px solid var(--color-divider);box-shadow:var(--shadow-lg)" (click)="$event.stopPropagation()">
+          <div style="padding:20px 24px;border-bottom:2px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between">
+            <span class="dialog-title">{{ drawerTitle() }}</span>
+            <button class="btn btn-icon btn-secondary" (click)="drawerVisible.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
           </div>
-          <div class="p-6">
+          <div style="padding:24px">
             @if (selectedRow()) {
-              <div class="flex gap-6 mb-5 p-4 bg-slate-50 rounded-lg">
-                <div class="flex flex-col"><span class="text-xs text-slate-500 mb-1">Montant total</span><span class="text-lg font-semibold text-slate-900">{{ selectedRow().montantTotal?.toLocaleString('fr-FR') }} FCFA</span></div>
-                <div class="flex flex-col"><span class="text-xs text-slate-500 mb-1">Payé</span><span class="text-lg font-semibold text-emerald-600">{{ selectedRow().totalPaye?.toLocaleString('fr-FR') }} FCFA</span></div>
-                <div class="flex flex-col"><span class="text-xs text-slate-500 mb-1">Reste</span><span class="text-lg font-semibold text-red-600">{{ selectedRow().reste?.toLocaleString('fr-FR') }} FCFA</span></div>
+              <div style="display:flex;gap:24px;margin-bottom:20px;padding:16px;border:1px solid var(--color-divider)">
+                <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Montant total</span><span style="font-size:17px;font-weight:700">{{ selectedRow().montantTotal?.toLocaleString('fr-FR') }} FCFA</span></div>
+                <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Payé</span><span style="font-size:17px;font-weight:700;color:#1a7a3f">{{ selectedRow().totalPaye?.toLocaleString('fr-FR') }} FCFA</span></div>
+                <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Reste</span><span style="font-size:17px;font-weight:700;color:var(--color-accent-700)">{{ selectedRow().reste?.toLocaleString('fr-FR') }} FCFA</span></div>
               </div>
-              <div class="overflow-x-auto rounded-lg border border-slate-200">
-                <table class="w-full text-sm">
-                  <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left font-semibold">N° Reçu</th><th class="px-4 py-3 text-left font-semibold">Versement</th><th class="px-4 py-3 text-left font-semibold">Date</th><th class="px-4 py-3 text-right font-semibold">Montant</th><th class="px-4 py-3 text-left font-semibold">Reçu</th></tr></thead>
-                  <tbody class="divide-y divide-slate-50">
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th>N° Reçu</th><th>Versement</th><th>Date</th><th style="text-align:right">Montant</th><th>Reçu</th></tr></thead>
+                  <tbody>
                     @for (p of selectedRow().versements || []; track p.id) {
-                      <tr class="hover:bg-slate-50"><td class="px-4 py-3 text-xs text-slate-500">{{ p.recu || p.numeroRecu || '-' }}</td><td class="px-4 py-3 text-slate-700">V{{ p.versement }}</td><td class="px-4 py-3 text-xs text-slate-600">{{ p.date | date:'dd/MM/yyyy' }}</td><td class="px-4 py-3 text-right font-medium text-slate-900">{{ p.montant?.toLocaleString('fr-FR') }} FCFA</td><td class="px-4 py-3"><button (click)="downloadRecu(p)" class="flex items-center gap-1.5 h-8 px-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover text-xs" title="Télécharger le reçu"><span class="material-symbols-outlined text-base">download</span></button></td></tr>
+                      <tr>
+                        <td style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ p.recu || p.numeroRecu || '-' }}</td>
+                        <td>V{{ p.versement }}</td>
+                        <td style="font-size:12px">{{ p.date | date:'dd/MM/yyyy' }}</td>
+                        <td style="text-align:right;font-weight:600">{{ p.montant?.toLocaleString('fr-FR') }} FCFA</td>
+                        <td><button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" (click)="downloadRecu(p)" title="Télécharger le reçu"><span class="material-symbols-outlined" style="font-size:16px">download</span></button></td>
+                      </tr>
                     } @empty {
-                      <tr><td colspan="5" class="text-center text-slate-400 py-6">Aucun paiement enregistré pour cet étudiant.</td></tr>
+                      <tr><td colspan="5" style="text-align:center;padding:24px 0;color:color-mix(in srgb, var(--color-text) 50%, transparent)">Aucun paiement enregistré pour cet étudiant.</td></tr>
                     }
                   </tbody>
                 </table>
@@ -88,6 +124,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
 })
 export class DafFinanceComponent implements OnInit {
   private http = inject(HttpClient);
+  private alertService = inject(AlertService);
 
   tableauFinancier = signal<any[]>([]);
   tableLoading = signal(false);
@@ -118,7 +155,8 @@ export class DafFinanceComponent implements OnInit {
   }
 
   loadVersements() {
-    this.http.get<any>(`${environment.apiUrl}/daf/versements`).subscribe({
+    const qs = this.filters.classeId ? `?classeId=${this.filters.classeId}` : '';
+    this.http.get<any>(`${environment.apiUrl}/daf/versements${qs}`).subscribe({
       next: (d) => this.versements.set(d || []),
       error: () => this.versements.set([]),
     });
@@ -147,6 +185,12 @@ export class DafFinanceComponent implements OnInit {
   onFilterChange() {
     this.tablePage.set(1);
     this.loadTableau();
+  }
+
+  onFilterClasseChange() {
+    this.filters.versementId = null;
+    this.loadVersements();
+    this.onFilterChange();
   }
 
   loadClasses() {
@@ -184,23 +228,23 @@ export class DafFinanceComponent implements OnInit {
         a.click();
         URL.revokeObjectURL(url);
       },
-      error: () => alert('Erreur lors du téléchargement du reçu'),
+      error: () => this.alertService.error('Erreur lors du téléchargement du reçu'),
     });
   }
 
   relanceEtudiant(etudiantId: string) {
     this.relanceId.set(etudiantId);
     this.http.post<any>(`${environment.apiUrl}/daf/relance-sms`, { etudiantId }).subscribe({
-      next: (res) => { this.relanceId.set(null); alert(res.message || 'Relance envoyée'); },
-      error: (err) => { this.relanceId.set(null); alert(err.error?.message || 'Erreur relance'); },
+      next: (res) => { this.relanceId.set(null); this.alertService.success(res.message || 'Relance envoyée'); },
+      error: (err) => { this.relanceId.set(null); this.alertService.error(err.error?.message || 'Erreur relance'); },
     });
   }
 
   relanceGroupee() {
     this.relanceLoading.set(true);
     this.http.post<any>(`${environment.apiUrl}/daf/relance-groupee`, {}).subscribe({
-      next: (res) => { this.relanceLoading.set(false); alert(res.message || 'Relances envoyées'); },
-      error: (err) => { this.relanceLoading.set(false); alert(err.error?.message || 'Erreur relance groupée'); },
+      next: (res) => { this.relanceLoading.set(false); this.alertService.success(res.message || 'Relances envoyées'); },
+      error: (err) => { this.relanceLoading.set(false); this.alertService.error(err.error?.message || 'Erreur relance groupée'); },
     });
   }
 }

@@ -1,62 +1,81 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { environment } from '../../../environments/environment';
+import { filiereLabel } from '../../core/utils/filiere.util';
+import { seanceStatutLabel, seanceStatutClass, StatutSeanceAffiche } from '../../core/utils/seance-statut.util';
 
 @Component({
   selector: 'app-enseignant-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzCardModule, NzButtonModule, NzIconModule, NzTableModule, NzGridModule, NzEmptyModule, NzRadioModule],
+  imports: [CommonModule, FormsModule],
   styles: [`
     .cal-wrap { overflow-x: auto; }
-    .cal-grid { display: grid; grid-template-columns: 60px repeat(6, 1fr); border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; min-width: 640px; }
-    .classe-row { padding:16px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-    .cal-header { padding: 8px 4px; text-align: center; font-weight: 600; background: #fafafa; border-bottom: 2px solid #e5e7eb; border-right: 1px solid #e5e7eb; font-size: 13px; }
-    .cal-time { padding: 4px 6px; text-align: right; font-size: 11px; color: #6b7280; border-right: 1px solid #e5e7eb; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; justify-content: flex-end; }
-    .cal-cell { border-right: 1px solid #e5e7eb; border-bottom: 1px solid #f0f0f0; min-height: 52px; padding: 2px; }
-    .cal-event { border-radius: 4px; padding: 4px 6px; margin: 2px 0; font-size: 11px; border-left: 3px solid; line-height: 1.4; }
+    .cal-grid { display: grid; grid-template-columns: 60px repeat(6, 1fr); border: 1px solid var(--color-divider); overflow: hidden; min-width: 640px; }
+    .cal-header { padding: 8px 4px; text-align: center; font-weight: 600; background: var(--color-neutral-100); border-bottom: 2px solid var(--color-divider); border-right: 1px solid var(--color-divider); font-size: 13px; }
+    .cal-header.today { background: var(--color-accent-100); }
+    .cal-header .date { font-size: 10px; color: color-mix(in srgb, var(--color-text) 55%, transparent); font-weight: 400; margin-top: 2px; }
+    .cal-time { padding: 4px 6px; text-align: right; font-size: 11px; color: color-mix(in srgb, var(--color-text) 50%, transparent); border-right: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); display: flex; align-items: flex-start; justify-content: flex-end; }
+    .cal-cell { border-right: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); min-height: 60px; padding: 2px; }
+    .cal-event { padding: 4px 6px; margin: 2px 0; font-size: 11px; border-left: 3px solid; line-height: 1.4; cursor: pointer; }
+    .cal-event:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
     .cal-event strong { display: block; font-size: 12px; }
-    .cal-event-class { color: #374151; }
-    .cal-event-time { color: #9ca3af; }
-    .cal-event-room { color: #6b7280; }
+    .cal-event-class { color: color-mix(in srgb, var(--color-text) 75%, transparent); }
+    .cal-event-time { color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+    .cal-event-room { color: color-mix(in srgb, var(--color-text) 60%, transparent); }
+    .gs-seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); }
+    .gs-seg-btn { padding: 8px 14px; font-size: 12px; font-weight: 600; font-family: var(--font-heading); background: none; border: none; cursor: pointer; color: color-mix(in srgb, var(--color-text) 60%, transparent); display: inline-flex; align-items: center; gap: 6px; }
+    .gs-seg-btn.active { background: var(--color-accent); color: var(--color-bg); }
+    .gs-seg-btn + .gs-seg-btn { border-left: 1px solid var(--color-divider); }
   `],
   template: `
     <div class="page-container">
-      <h1 class="page-title">Mon emploi du temps</h1>
+      <h1 style="margin:0 0 24px">Mon emploi du temps</h1>
 
-      <nz-card style="margin-bottom: 24px;" nzTitle="Emploi du temps">
-        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
-          <nz-radio-group [(ngModel)]="edtViewModeValue" nzButtonStyle="solid" (ngModelChange)="edtViewMode.set($event)">
-            <label nz-radio-button nzValue="calendar"><span nz-icon nzType="calendar"></span> Calendrier</label>
-            <label nz-radio-button nzValue="table"><span nz-icon nzType="table"></span> Tableau</label>
-          </nz-radio-group>
+      <div class="gs-panel"><div class="gs-panel-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button (click)="prevWeek()" class="btn btn-secondary">
+              <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span> Précédent
+            </button>
+            <span style="font-size:13px;font-weight:600;padding:0 8px">{{ weekRangeLabel() }}</span>
+            <button (click)="nextWeek()" class="btn btn-secondary">
+              Suivant <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
+            </button>
+            <button (click)="goToday()" class="btn btn-primary">
+              <span class="material-symbols-outlined" style="font-size:18px">today</span> Cette semaine
+            </button>
+          </div>
+          <div class="gs-seg">
+            <button (click)="edtViewMode.set('calendar')" class="gs-seg-btn" [class.active]="edtViewMode() === 'calendar'">
+              <span class="material-symbols-outlined" style="font-size:16px">calendar_month</span> Calendrier
+            </button>
+            <button (click)="edtViewMode.set('table')" class="gs-seg-btn" [class.active]="edtViewMode() === 'table'">
+              <span class="material-symbols-outlined" style="font-size:16px">table_rows</span> Tableau
+            </button>
+          </div>
         </div>
+
         @if (edtViewMode() === 'calendar') {
           @if (edt().length > 0) {
             <div class="cal-wrap"><div class="cal-grid">
               <div class="cal-header">Heure</div>
               @for (day of edtJours; track day.value) {
-                <div class="cal-header">{{ day.label }}</div>
+                <div class="cal-header" [class.today]="isToday(day.value)">{{ day.label }}<div class="date">{{ dateForDay(day.value) }}</div></div>
               }
               @for (hour of edtHours; track hour) {
                 <div class="cal-time">{{ hour }}</div>
                 @for (day of edtJours; track day.value) {
                   <div class="cal-cell">
                     @for (slot of slotsForDayHour(day.value, hour); track slot.id) {
-                      <div class="cal-event" [style.background-color]="getEventColor(slot.matiereId).bg" [style.border-left-color]="getEventColor(slot.matiereId).border">
+                      <div class="cal-event" [style.background]="'var(--color-neutral-100)'" [style.border-left-color]="'var(--color-accent)'" (click)="openSeance(slot, day.value)">
                         <strong>{{ slot.matiere?.nom }}</strong>
                         <div class="cal-event-class">{{ slot.classe?.nom }}</div>
                         <div class="cal-event-time">{{ slot.heureDebut }} - {{ slot.heureFin }}</div>
                         @if (slot.salle?.nom) { <div class="cal-event-room">Salle: {{ slot.salle.nom }}</div> }
+                        <span class="tag" [class]="statutClass(slot, day.value)" style="margin-top:4px;font-size:10px">{{ statutLabel(slot, day.value) }}</span>
                       </div>
                     }
                   </div>
@@ -64,49 +83,77 @@ import { environment } from '../../../environments/environment';
               }
             </div></div>
           } @else {
-            <nz-empty nzDescription="Aucun créneau dans votre emploi du temps"></nz-empty>
+            <div class="table-empty">
+              <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">event_busy</span>
+              Aucun créneau dans votre emploi du temps
+            </div>
           }
         } @else {
           @if (edt().length > 0) {
-            <nz-table #edtTable [nzData]="edt()" [nzPageSize]="50" nzSize="small">
-              <thead><tr><th>Jour</th><th>Heure</th><th>Matière</th><th>Classe</th><th>Salle</th></tr></thead>
-              <tbody>
-                @for (slot of edtTable.data; track slot.id) {
-                  <tr><td>{{ edtJoursLabel[slot.jourSemaine] || '—' }}</td><td>{{ slot.heureDebut }} - {{ slot.heureFin }}</td>
-                    <td>{{ slot.matiere?.nom }}</td><td>{{ slot.classe?.nom }}</td><td>{{ slot.salle?.nom || '—' }}</td></tr>
-                }
-              </tbody>
-            </nz-table>
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead>
+                  <tr><th>Jour</th><th>Heure</th><th>Matière</th><th>Classe</th><th>Salle</th><th>Statut</th></tr>
+                </thead>
+                <tbody>
+                  @for (slot of edt(); track slot.id) {
+                    <tr style="cursor:pointer" (click)="openSeance(slot, slot.jourSemaine)">
+                      <td>{{ edtJoursLabel[slot.jourSemaine] || '—' }}</td>
+                      <td>{{ slot.heureDebut }} - {{ slot.heureFin }}</td>
+                      <td style="font-weight:600">{{ slot.matiere?.nom }}</td>
+                      <td>{{ slot.classe?.nom }}</td>
+                      <td>{{ slot.salle?.nom || '—' }}</td>
+                      <td><span class="tag" [class]="statutClass(slot, slot.jourSemaine)">{{ statutLabel(slot, slot.jourSemaine) }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           } @else {
-            <nz-empty nzDescription="Aucun créneau dans votre emploi du temps"></nz-empty>
+            <div class="table-empty">
+              <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">event_busy</span>
+              Aucun créneau dans votre emploi du temps
+            </div>
           }
         }
-      </nz-card>
+      </div></div>
 
-      <nz-card style="margin-bottom: 24px;" nzTitle="Mes classes">
-        @for (aff of affectations(); track aff.classe.id) {
-          <div class="classe-row">
-            <div>
-              <strong>{{ aff.classe.nom }}</strong> — {{ aff.classe.filiere?.nom }}
-              <br /><small style="color:#6b7280;">{{ aff.matieres.length }} matière(s): {{ matieresNames(aff.matieres) }}</small>
+      <div class="gs-panel"><div class="gs-panel-head">
+        <h3 style="margin:0;font-size:16px">Mes classes</h3>
+        <button (click)="goToSeances()" class="btn btn-secondary btn-sm">
+          <span class="material-symbols-outlined" style="font-size:16px">event_note</span> Mes séances
+        </button>
+      </div><div class="gs-panel-body">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          @for (aff of affectations(); track aff.classe.id) {
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px;border:1px solid var(--color-divider)">
+              <div>
+                <strong>{{ aff.classe.nom }}</strong> <span class="text-muted">— {{ filiereLabel(aff.classe) }}</span>
+                <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 45%, transparent);margin-top:2px">{{ aff.matieres.length }} matière(s) : {{ matieresNames(aff.matieres) }}</div>
+              </div>
+              <button (click)="goToNotes()" class="btn btn-primary btn-sm">Saisir des notes</button>
             </div>
-            <button nz-button nzType="primary" (click)="goToNotes()">Saisir des notes</button>
-          </div>
-        }
-      </nz-card>
-
+          } @empty {
+            <div class="table-empty">
+              <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">school</span>
+              Aucune classe affectée.
+            </div>
+          }
+        </div>
+      </div></div>
     </div>
   `,
 })
 export class EnseignantHomeComponent implements OnInit {
+  filiereLabel = filiereLabel;
   private http = inject(HttpClient);
   private router = inject(Router);
 
   affectations = signal<any[]>([]);
   edt = signal<any[]>([]);
   edtViewMode = signal<'calendar' | 'table'>('calendar');
-  edtViewModeValue: 'calendar' | 'table' = 'calendar';
-  jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  weekOffset = signal(0);
+  statuts = signal<Map<string, StatutSeanceAffiche>>(new Map());
 
   edtJours = [
     { value: 1, label: 'Lundi' }, { value: 2, label: 'Mardi' }, { value: 3, label: 'Mercredi' },
@@ -114,16 +161,6 @@ export class EnseignantHomeComponent implements OnInit {
   ];
   edtJoursLabel: Record<number, string> = { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi' };
   edtHours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
-  eventColors = [
-    { bg: '#ffedd5', border: '#c2410c' },
-    { bg: '#f6ffed', border: '#52c41a' },
-    { bg: '#fff7e6', border: '#fa8c16' },
-    { bg: '#fff1f0', border: '#f5222d' },
-    { bg: '#f9f0ff', border: '#722ed1' },
-    { bg: '#e6fffb', border: '#13c2c2' },
-    { bg: '#fcffe6', border: '#a0d911' },
-    { bg: '#fffbe6', border: '#d4b106' },
-  ];
 
   slotsForDayHour(day: number, hour: string): any[] {
     const hourNum = parseInt(hour.split(':')[0]);
@@ -134,20 +171,94 @@ export class EnseignantHomeComponent implements OnInit {
     });
   }
 
-  getEventColor(matiereId: string): { bg: string; border: string } {
-    let hash = 0;
-    for (let i = 0; i < (matiereId || '').length; i++) {
-      hash = ((hash << 5) - hash) + (matiereId || '').charCodeAt(i);
-      hash |= 0;
-    }
-    return this.eventColors[Math.abs(hash) % this.eventColors.length];
-  }
-
-  ngOnInit() { this.loadAffectations(); this.loadEdt(); }
+  ngOnInit() { this.loadAffectations(); this.loadEdt(); this.loadStatuts(); }
 
   loadAffectations() { this.http.get<any[]>(`${environment.apiUrl}/enseignant/affectations`).subscribe({ next: (d) => this.affectations.set(d), error: () => this.affectations.set([]) }); }
   loadEdt() { this.http.get<any[]>(`${environment.apiUrl}/enseignant/emploi-du-temps`).subscribe({ next: (d) => this.edt.set(d), error: () => this.edt.set([]) }); }
 
+  loadStatuts() {
+    const monday = this.currentWeekStart();
+    const saturday = new Date(monday);
+    saturday.setDate(monday.getDate() + 5);
+    const weekStart = this.toISODate(monday);
+    const weekEnd = this.toISODate(saturday);
+    this.http.get<{ emploiDuTempsId: string; date: string; statutAffiche: StatutSeanceAffiche }[]>(
+      `${environment.apiUrl}/enseignant/seances/semaine?weekStart=${weekStart}&weekEnd=${weekEnd}`,
+    ).subscribe({
+      next: (d) => this.statuts.set(new Map((d || []).map(x => [`${x.emploiDuTempsId}|${x.date}`, x.statutAffiche]))),
+      error: () => this.statuts.set(new Map()),
+    });
+  }
+
+  statutFor(slot: any, jourSemaine: number): StatutSeanceAffiche {
+    return this.statuts().get(`${slot.id}|${this.isoDateForDay(jourSemaine)}`) || 'A_RENSEIGNER';
+  }
+  statutLabel(slot: any, jourSemaine: number): string { return seanceStatutLabel(this.statutFor(slot, jourSemaine)); }
+  statutClass(slot: any, jourSemaine: number): string { return seanceStatutClass(this.statutFor(slot, jourSemaine)); }
+
+  openSeance(slot: any, jourSemaine: number) {
+    this.router.navigate(['/seance', slot.id, this.isoDateForDay(jourSemaine)]);
+  }
+
   goToNotes() { this.router.navigate(['/enseignant/notes']); }
+  goToSeances() { this.router.navigate(['/enseignant/seances']); }
   matieresNames(matieres: any[]): string { return (matieres || []).map((m) => m.nom).join(', '); }
+
+  // --- Navigation semaine (même logique que etudes/emploi-du-temps.component.ts) ---
+  prevWeek() { this.weekOffset.update(v => v - 1); this.loadStatuts(); }
+  nextWeek() { this.weekOffset.update(v => v + 1); this.loadStatuts(); }
+  goToday() { this.weekOffset.set(0); this.loadStatuts(); }
+
+  currentWeekStart(): Date {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() + this.weekOffset() * 7);
+    return monday;
+  }
+
+  toISODate(date: Date): string {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${y}-${m}-${d}`;
+  }
+
+  isoDateForDay(jourSemaine: number): string {
+    const monday = this.currentWeekStart();
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + (jourSemaine - 1));
+    return this.toISODate(date);
+  }
+
+  dateForDay(jourSemaine: number): string {
+    const iso = this.isoDateForDay(jourSemaine);
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  weekRangeLabel = computed(() => {
+    this.weekOffset(); // dependency
+    const monday = this.currentWeekStart();
+    const saturday = new Date(monday);
+    saturday.setDate(monday.getDate() + 5);
+    const fmt = (dt: Date) => {
+      const d = String(dt.getDate()).padStart(2, '0');
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const y = dt.getFullYear();
+      return `${d}/${m}/${y}`;
+    };
+    return `${fmt(monday)} — ${fmt(saturday)}`;
+  });
+
+  isToday(jourSemaine: number): boolean {
+    if (this.weekOffset() !== 0) return false;
+    const now = new Date();
+    const day = now.getDay();
+    const todayJour = day === 0 ? 7 : day;
+    return todayJour === jourSemaine;
+  }
 }

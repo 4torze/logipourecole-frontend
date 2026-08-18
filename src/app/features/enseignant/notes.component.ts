@@ -3,149 +3,139 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzAlertModule } from 'ng-zorro-antd/alert';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalService } from 'ng-zorro-antd/modal';
-import { NzModalModule } from 'ng-zorro-antd/modal';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-enseignant-notes',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule,
-    NzCardModule, NzButtonModule, NzIconModule,
-    NzSelectModule, NzTableModule, NzAlertModule, NzTagModule, NzEmptyModule,
-    NzModalModule,
-  ],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-container">
-      <h1 class="page-title">Évaluations</h1>
+      <h1 style="margin-bottom:24px">Évaluations</h1>
 
       <!-- Étape 1: Sélection du devoir -->
-      <nz-card style="margin-bottom: 16px;" nzTitle="Choisir un devoir à évaluer">
+      <div class="gs-panel"><div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Choisir un devoir à évaluer</h3></div><div class="gs-panel-body">
         @if (loadingDevoirs()) {
-          <div style="text-align:center; padding:20px;"><span nz-icon nzType="loading" style="font-size:24px;"></span> Chargement de vos devoirs...</div>
+          <div class="flex items-center gap-2 text-sm text-muted py-6"><span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Chargement de vos devoirs...</div>
         } @else if (devoirs().length === 0) {
-          <nz-empty nzDescription="Vous n'avez créé aucun devoir. Allez dans 'Devoirs' pour en créer un, puis revenez ici pour saisir les notes.">
-            <button nz-button nzType="primary" (click)="goToDevoirs()"><span nz-icon nzType="file-text"></span> Créer un devoir</button>
-          </nz-empty>
+          <div class="text-center py-8">
+            <span class="material-symbols-outlined text-3xl text-muted block mb-2">assignment</span>
+            <p class="text-sm text-muted mb-4">Vous n'avez créé aucun devoir. Allez dans « Devoirs » pour en créer un, puis revenez ici pour saisir les notes.</p>
+            <button (click)="goToDevoirs()" class="btn btn-primary" style="margin:0 auto">
+              <span class="material-symbols-outlined" style="font-size:18px">description</span> Créer un devoir
+            </button>
+          </div>
         } @else {
-          <nz-select
-            [ngModel]="selectedDevoirId()"
-            (ngModelChange)="onDevoirChange($event)"
-            nzPlaceHolder="Sélectionnez un devoir"
-            style="width:100%;"
-            nzSize="large"
-            nzShowSearch
-            nzAllowClear>
+          <select [ngModel]="selectedDevoirId()" (ngModelChange)="onDevoirChange($event)" class="input">
+            <option value="">Sélectionnez un devoir…</option>
             @for (d of devoirs(); track d.id) {
-              <nz-option [nzValue]="d.id" [nzLabel]="d.titre + ' — ' + (d.classeNom || '') + ' — ' + (d.matiere?.nom || '')">
-              </nz-option>
+              <option [value]="d.id">{{ d.titre }} — {{ d.classeNom || '' }} — {{ d.matiere?.nom || '' }}</option>
             }
-          </nz-select>
+          </select>
 
           @if (selectedDevoir()) {
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; padding:12px; background:#fafafa; border-radius:8px;">
-              <nz-tag nzColor="processing"><strong>Classe:</strong> {{ selectedDevoir()?.classeNom }}</nz-tag>
-              <nz-tag nzColor="blue"><strong>Matière:</strong> {{ selectedDevoir()?.matiere?.nom }}</nz-tag>
-              <nz-tag nzColor="gold"><strong>Points:</strong> {{ selectedDevoir()?.points }}</nz-tag>
-              <nz-tag nzColor="purple"><strong>Date limite:</strong> {{ selectedDevoir()?.dateLimite | date:'dd/MM/yyyy' }}</nz-tag>
+            <div class="flex gap-2 flex-wrap mt-4 gs-well">
+              <span class="tag tag-neutral"><strong class="mr-1">Classe :</strong> {{ selectedDevoir()?.classeNom }}</span>
+              <span class="tag tag-neutral"><strong style="margin-right:4px">Matière :</strong> {{ selectedDevoir()?.matiere?.nom }}</span>
+              <span class="tag tag-accent"><strong class="mr-1">Points :</strong> {{ selectedDevoir()?.points }}</span>
+              <span class="tag tag-neutral"><strong style="margin-right:4px">Date limite :</strong> {{ selectedDevoir()?.dateLimite | date:'dd/MM/yyyy' }}</span>
             </div>
           }
         }
-      </nz-card>
+      </div></div>
 
       <!-- Étape 2: Saisie des notes (auto-chargée) -->
       @if (selectedDevoir()) {
         @if (loadingEtudiants()) {
-          <nz-card><div style="text-align:center; padding:20px;"><span nz-icon nzType="loading" style="font-size:24px;"></span> Chargement des étudiants...</div></nz-card>
+          <div class="gs-panel"><div class="gs-panel-body">
+            <div class="flex items-center gap-2 text-sm text-muted py-6"><span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Chargement des étudiants...</div>
+          </div></div>
         } @else if (etudiants().length > 0) {
-          <nz-card nzTitle="Saisie des notes — {{ etudiants().length }} étudiants">
+          <div class="gs-panel"><div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Saisie des notes — {{ etudiants().length }} étudiants</h3></div><div class="gs-panel-body">
             @if (existingNotesCount() > 0) {
-              <nz-alert
-                nzType="info"
-                nzShowIcon
-                nzMessage="{{ existingNotesCount() }} note(s) déjà saisie(s) pour ce devoir. Les notes existantes seront mises à jour."
-                style="margin-bottom:12px;"></nz-alert>
+              <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-left:3px solid var(--color-text);background:var(--color-neutral-100);font-size:14px;margin-bottom:16px">
+                <span class="material-symbols-outlined" style="font-size:18px">info</span>
+                {{ existingNotesCount() }} note(s) déjà saisie(s) pour ce devoir. Les notes existantes seront mises à jour.
+              </div>
             }
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-              <div style="font-size:13px; color:#6b7280;">
-                Note sur {{ selectedDevoir()?.points }} — évaluation: {{ selectedDevoir()?.titre }}
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button nz-button nzSize="small" (click)="fillAllBlank((selectedDevoir()?.points || 20) / 2)"><span nz-icon nzType="edit"></span> Pré-remplir à {{ (selectedDevoir()?.points || 20) / 2 }}</button>
-                <button nz-button nzSize="small" (click)="clearAll()"><span nz-icon nzType="clear"></span> Effacer</button>
-              </div>
-            </div>
-
-            <nz-table #etTable [nzData]="etudiants()" [nzPageSize]="50" [nzFrontPagination]="false" nzSize="middle">
-              <thead><tr>
-                <th style="width:50px;">N°</th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th style="width:140px; text-align:center;">Note /{{ selectedDevoir()?.points }}</th>
-                <th style="width:80px; text-align:center;">Statut</th>
-              </tr></thead>
-              <tbody>
-                @for (et of etTable.data; track et.id; let i = $index) {
-                  <tr>
-                    <td style="color:#9ca3af;">{{ i + 1 }}</td>
-                    <td><strong>{{ et.nom }}</strong></td>
-                    <td>{{ et.prenom }}</td>
-                    <td style="text-align:center;">
-                      <input nz-input type="number" min="0" [max]="selectedDevoir()?.points" step="0.25"
-                        [ngModel]="notesMap()[et.id]"
-                        (ngModelChange)="updateNote(et.id, $event)"
-                        style="width:80px; text-align:center;"
-                        [placeholder]="'—'" />
-                    </td>
-                    <td style="text-align:center;">
-                      @if (notesMap()[et.id] !== null && notesMap()[et.id] !== undefined) {
-                        @if (notesMap()[et.id]! >= (selectedDevoir()?.points || 20) / 2) {
-                          <nz-tag nzColor="success">{{ notesMap()[et.id] }}</nz-tag>
-                        } @else {
-                          <nz-tag nzColor="error">{{ notesMap()[et.id] }}</nz-tag>
-                        }
-                      } @else {
-                        <nz-tag nzColor="default">N/A</nz-tag>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </nz-table>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #e5e7eb;">
-              <div style="display:flex; gap:24px;">
-                <div><span style="color:#6b7280; font-size:13px;">Notes saisies:</span> <strong>{{ notesSaisies() }} / {{ etudiants().length }}</strong></div>
-                <div><span style="color:#6b7280; font-size:13px;">Moyenne:</span> <strong>{{ moyenneClasse() }}</strong></div>
-              </div>
-              <div style="display:flex; gap:12px; align-items:center;">
-                @if (savedSuccess()) {
-                  <nz-alert nzType="success" nzMessage="Notes enregistrées" nzShowIcon style="display:inline-flex;"></nz-alert>
-                }
-                @if (errorMessage()) {
-                  <nz-alert nzType="error" [nzMessage]="errorMessage()" nzShowIcon style="display:inline-flex;"></nz-alert>
-                }
-                <button nz-button nzType="primary" nzSize="large" (click)="saveNotes()" [disabled]="saving() || notesSaisies() === 0">
-                  @if (saving()) { <span nz-icon nzType="loading"></span> }
-                  <span nz-icon nzType="save"></span> Enregistrer ({{ notesSaisies() }} notes)
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div class="text-xs text-muted">Note sur {{ selectedDevoir()?.points }} — évaluation : {{ selectedDevoir()?.titre }}</div>
+              <div class="flex gap-2">
+                <button (click)="fillAllBlank((selectedDevoir()?.points || 20) / 2)" class="btn btn-secondary btn-sm">
+                  <span class="material-symbols-outlined" style="font-size:16px">edit</span> Pré-remplir à {{ (selectedDevoir()?.points || 20) / 2 }}
+                </button>
+                <button (click)="clearAll()" class="btn btn-secondary btn-sm">
+                  <span class="material-symbols-outlined" style="font-size:16px">backspace</span> Effacer
                 </button>
               </div>
             </div>
-          </nz-card>
+
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width:48px">N°</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th style="text-align:center">Note /{{ selectedDevoir()?.points }}</th>
+                    <th style="text-align:center">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (et of etudiants(); track et.id; let i = $index) {
+                    <tr>
+                      <td style="color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ i + 1 }}</td>
+                      <td style="font-weight:600">{{ et.nom }}</td>
+                      <td>{{ et.prenom }}</td>
+                      <td style="text-align:center">
+                        <input type="number" min="0" [max]="selectedDevoir()?.points" step="0.25"
+                          [ngModel]="notesMap()[et.id]"
+                          (ngModelChange)="updateNote(et.id, $event)"
+                          placeholder="—"
+                          class="input" style="width:80px;text-align:center" />
+                      </td>
+                      <td style="text-align:center">
+                        @if (notesMap()[et.id] !== null && notesMap()[et.id] !== undefined) {
+                          @if (notesMap()[et.id]! >= (selectedDevoir()?.points || 20) / 2) {
+                            <span class="tag tag-success">{{ notesMap()[et.id] }}</span>
+                          } @else {
+                            <span class="tag tag-danger">{{ notesMap()[et.id] }}</span>
+                          }
+                        } @else {
+                          <span class="tag tag-neutral">N/A</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--color-divider);flex-wrap:wrap;gap:12px">
+              <div style="display:flex;gap:24px;font-size:14px">
+                <div><span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">Notes saisies :</span> <strong>{{ notesSaisies() }} / {{ etudiants().length }}</strong></div>
+                <div><span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">Moyenne :</span> <strong>{{ moyenneClasse() }}</strong></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                @if (savedSuccess()) {
+                  <span class="tag tag-success"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">check_circle</span> Notes enregistrées</span>
+                }
+                @if (errorMessage()) {
+                  <span class="tag tag-danger"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">error</span> {{ errorMessage() }}</span>
+                }
+                <button (click)="saveNotes()" [disabled]="saving() || notesSaisies() === 0" class="btn btn-primary">
+                  @if (saving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">save</span> }
+                  Enregistrer ({{ notesSaisies() }} notes)
+                </button>
+              </div>
+            </div>
+          </div></div>
         } @else {
-          <nz-card>
-            <nz-empty nzDescription="Aucun étudiant inscrit dans cette classe pour l'année active."></nz-empty>
-          </nz-card>
+          <div class="gs-panel"><div class="gs-panel-body">
+            <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">group_off</span>
+            Aucun étudiant inscrit dans cette classe pour l'année active.
+          </div></div>
         }
       }
     </div>
@@ -153,9 +143,8 @@ import { environment } from '../../../environments/environment';
 })
 export class EnseignantNotesComponent implements OnInit {
   private http = inject(HttpClient);
-  private message = inject(NzMessageService);
+  private alertService = inject(AlertService);
   private router = inject(Router);
-  private modal = inject(NzModalService);
 
   devoirs = signal<any[]>([]);
   etudiants = signal<any[]>([]);
@@ -198,7 +187,7 @@ export class EnseignantNotesComponent implements OnInit {
       next: (affectations) => {
         if (!affectations || affectations.length === 0) {
           this.loadingDevoirs.set(false);
-          this.message.warning('Vous n\'avez aucune classe affectée');
+          this.alertService.warning('Vous n\'avez aucune classe affectée');
           return;
         }
         let allDevoirs: any[] = [];
@@ -234,7 +223,7 @@ export class EnseignantNotesComponent implements OnInit {
       error: (err: any) => {
         this.loadingDevoirs.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : 'Erreur chargement affectations';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }
@@ -257,7 +246,7 @@ export class EnseignantNotesComponent implements OnInit {
         this.existingNotesCount.set(0);
         this.loadingEtudiants.set(false);
         if (d.length === 0) {
-          this.message.warning('Aucun étudiant inscrit dans cette classe');
+          this.alertService.warning('Aucun étudiant inscrit dans cette classe');
           return;
         }
         // Pré-charger les notes existantes pour ce devoir
@@ -266,7 +255,7 @@ export class EnseignantNotesComponent implements OnInit {
             const count = (existingNotes || []).length;
             if (count > 0) {
               this.existingNotesCount.set(count);
-              this.message.info(`${count} note(s) déjà saisie(s) pour ce devoir. Vous pouvez les modifier.`);
+              this.alertService.info(`${count} note(s) déjà saisie(s) pour ce devoir. Vous pouvez les modifier.`);
               const updatedMap = { ...this.notesMap() };
               for (const n of existingNotes || []) {
                 if (updatedMap[n.etudiantId] !== undefined) {
@@ -282,7 +271,7 @@ export class EnseignantNotesComponent implements OnInit {
       error: (err: any) => {
         this.loadingEtudiants.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : 'Erreur chargement étudiants';
-        this.message.error(msg);
+        this.alertService.error(msg);
       },
     });
   }
@@ -305,7 +294,7 @@ export class EnseignantNotesComponent implements OnInit {
     this.notesMap.set(map);
   }
 
-  saveNotes() {
+  async saveNotes() {
     const devoir = this.selectedDevoir();
     if (!devoir) return;
     const nm = this.notesMap();
@@ -331,7 +320,7 @@ export class EnseignantNotesComponent implements OnInit {
           this.saving.set(false);
           this.savedSuccess.set(true);
           this.existingNotesCount.set(notes.length);
-          this.message.success(`${notes.length} note(s) enregistrée(s)`);
+          this.alertService.success(`${notes.length} note(s) enregistrée(s)`);
           setTimeout(() => this.savedSuccess.set(false), 3000);
         },
         error: (err: any) => {
@@ -343,13 +332,12 @@ export class EnseignantNotesComponent implements OnInit {
     };
 
     if (this.existingNotesCount() > 0) {
-      this.modal.confirm({
-        nzTitle: 'Confirmer la mise à jour',
-        nzContent: `${this.existingNotesCount()} note(s) existante(s) pour ce devoir. Voulez-vous les mettre à jour ?`,
-        nzOkText: 'Mettre à jour',
-        nzCancelText: 'Annuler',
-        nzOnOk: () => doSave(),
+      const ok = await this.alertService.confirm({
+        title: 'Confirmer la mise à jour',
+        text: `${this.existingNotesCount()} note(s) existante(s) pour ce devoir. Voulez-vous les mettre à jour ?`,
+        confirmText: 'Mettre à jour',
       });
+      if (ok) doSave();
     } else {
       doSave();
     }

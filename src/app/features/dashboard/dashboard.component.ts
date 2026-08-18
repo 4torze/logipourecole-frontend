@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
-import { RoleUtilisateur } from '../../core/models';
+import { RoleUtilisateur, SuperAdminStats } from '../../core/models';
 import { environment } from '../../../environments/environment';
 import { SuperAdminTabService } from '../../core/services/super-admin-tab.service';
 
@@ -11,20 +11,28 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule],
+  styles: [`
+    .gs-stat { border:1px solid var(--color-divider); padding:20px; display:flex; flex-direction:column; gap:8px; }
+    .gs-stat-label { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:color-mix(in srgb, var(--color-text) 60%, transparent); }
+    .gs-stat-num { font-family:var(--font-heading); font-weight:800; font-size:32px; line-height:1; margin-left:-.03em; }
+    .gs-panel { border:1px solid var(--color-divider); display:flex; flex-direction:column; }
+    .gs-panel-head { padding:16px 20px; border-bottom:2px solid var(--color-divider); display:flex; align-items:center; justify-content:space-between; }
+    .gs-panel-body { padding:20px; }
+    .gs-bartrack { height:10px; background:var(--color-neutral-200); position:relative; }
+    .gs-barfill { height:10px; background:var(--color-accent); position:absolute; left:0; top:0; }
+  `],
   template: `
-    <div class="page-container">
+    <div style="padding:32px;display:flex;flex-direction:column;gap:28px;max-width:1440px;margin:0 auto">
       <!-- Welcome card -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-card p-6 flex items-center gap-5">
-        <div class="h-15 w-15 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-lg shrink-0">
-          {{ userInitials() }}
-        </div>
+      <div style="border:1px solid var(--color-divider);background:var(--color-surface);padding:20px 24px;display:flex;align-items:center;gap:20px">
+        <span style="width:52px;height:52px;border:1.5px solid var(--color-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:800;font-size:20px;color:var(--color-accent);flex:none">{{ userInitials() }}</span>
         <div>
-          <h2 class="text-2xl font-bold text-slate-900">Bienvenue, {{ authService.currentUser()?.prenom }} {{ authService.currentUser()?.nom }}</h2>
-          <p class="text-sm text-slate-500 mt-1.5 flex items-center gap-2 flex-wrap">
+          <h2 style="margin:0">Bienvenue, {{ authService.currentUser()?.prenom }} {{ authService.currentUser()?.nom }}</h2>
+          <p style="margin:6px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 65%, transparent);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             Vous êtes connecté en tant que
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">{{ roleLabel() }}</span>
+            <span class="tag tag-accent">{{ roleLabel() }}</span>
             @if (authService.currentUser()?.ecole) {
-              <span>· École : <strong class="text-slate-900">{{ authService.currentUser()?.ecole?.nom }}</strong></span>
+              <span>· École : <strong style="color:var(--color-text)">{{ authService.currentUser()?.ecole?.nom }}</strong></span>
             }
           </p>
         </div>
@@ -32,74 +40,92 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.SUPER_ADMIN) {
         <!-- SUPER ADMIN DASHBOARD -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Établissements</p>
-            <p class="text-3xl font-bold text-primary mt-2">{{ kpi().totalEcoles }}</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Établissements</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().totalEcoles }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Actifs</span><span class="gs-stat-num">{{ kpi().ecolesActives }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Bloqués</span><span class="gs-stat-num" style="color:var(--color-accent-700)">{{ kpi().ecolesBloquees }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Utilisateurs</span><span class="gs-stat-num">{{ kpi().totalUsers }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Étudiants</span><span class="gs-stat-num">{{ kpi().totalEtudiants }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Revenu actif</span><span class="gs-stat-num" style="font-size:22px">{{ kpi().revenuActif | number:'1.0-0':'fr-FR' }}</span></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head">
+              <h3 style="margin:0;font-size:16px">Évolution des inscriptions d'écoles</h3>
+              <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">6 derniers mois</span>
+            </div>
+            <div class="gs-panel-body">
+              @if (kpi().evolutionInscriptions?.length > 0) {
+                <div style="display:flex;align-items:flex-end;gap:14px;height:160px">
+                  @for (m of kpi().evolutionInscriptions; track m.mois; let last = $last) {
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">
+                      <div style="width:100%" [style.height.px]="barHeightOf(kpi().evolutionInscriptions, 'total', m.total)" [style.background]="last ? 'var(--color-accent)' : 'var(--color-neutral-300)'"></div>
+                      <span style="font-size:11px" [style.color]="last ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)'" [style.font-weight]="last ? 600 : 400">{{ m.mois }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Aucune donnée disponible.</p>
+              }
+            </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Actifs</p>
-            <p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().ecolesActives }}</p>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bloqués</p>
-            <p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().ecolesBloquees }}</p>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Utilisateurs</p>
-            <p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().totalUsers }}</p>
+
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Répartition par abonnement</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:14px">
+              @for (seg of abonnementSegments(); track seg.statut) {
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>{{ seg.statut }}</span><strong>{{ seg.total }} · {{ seg.pct.toFixed(0) }}%</strong></div>
+                  <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="seg.pct"></div></div>
+                </div>
+              } @empty {
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Aucune donnée disponible.</p>
+              }
+              <div class="hr" style="margin:2px 0"></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:color-mix(in srgb, var(--color-text) 65%, transparent)">Total écoles</span><strong>{{ abonnementTotal() }}</strong></div>
+            </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
-          <div class="md:col-span-3 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Établissements récents</h3></div>
-            <div class="p-6">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel" style="grid-column:span 3">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Établissements récents</h3></div>
+            <div class="gs-panel-body">
               @if (kpi().ecolesRecentes?.length) {
-                <div class="flex flex-col gap-3">
+                <div style="display:flex;flex-direction:column">
                   @for (e of kpi().ecolesRecentes; track e.id) {
-                    <div class="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                      <div class="flex items-center gap-3">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                      <div style="display:flex;align-items:center;gap:12px">
                         @if (e.logoUrl) {
-                          <img [src]="ecoleLogoUrl(e.logoUrl)" alt="" class="w-8 h-8 object-contain rounded-md" />
+                          <img [src]="ecoleLogoUrl(e.logoUrl)" alt="" style="width:32px;height:32px;object-fit:contain" />
                         } @else {
-                          <span class="material-symbols-outlined text-primary text-xl">account_balance</span>
+                          <span class="material-symbols-outlined" style="color:var(--color-accent);font-size:20px">account_balance</span>
                         }
                         <div>
-                          <strong class="text-slate-900 text-sm">{{ e.nom }}</strong>
-                          <div class="text-xs text-slate-500">{{ e.sousDomaine }}.logipourecole.com</div>
+                          <strong style="display:block;font-size:13px">{{ e.nom }}</strong>
+                          <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ e.sousDomaine }}.raniag.com</span>
                         </div>
                       </div>
-                      <div class="flex items-center gap-3">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [class]="e.actif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'">{{ e.actif ? 'Actif' : 'Bloqué' }}</span>
-                        <span class="text-xs text-slate-500">{{ e._count?.utilisateurs || 0 }} users</span>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span class="tag" [class]="e.actif ? 'tag-success' : 'tag-danger'">{{ e.actif ? 'Actif' : 'Bloqué' }}</span>
+                        <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ e._count?.utilisateurs || 0 }} users</span>
                       </div>
                     </div>
                   }
                 </div>
               } @else {
-                <div class="flex flex-col items-center gap-3 py-12 text-slate-400">
-                  <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
-                  <p class="text-sm">Aucun établissement</p>
-                </div>
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0;text-align:center;padding:24px 0">Aucun établissement</p>
               }
             </div>
           </div>
-          <div class="md:col-span-2 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all active:scale-[0.98] text-sm" (click)="goToSuperAdminTab('etablissements')">
-                <span class="material-symbols-outlined text-xl">account_balance</span> Gérer les établissements
-              </button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="goToSuperAdminTab('utilisateurs')">
-                <span class="material-symbols-outlined text-xl">groups</span> Voir les utilisateurs
-              </button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="goToSuperAdminTab('audit')">
-                <span class="material-symbols-outlined text-xl">history</span> Journal d'audit
-              </button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/super-admin')">
-                <span class="material-symbols-outlined text-xl">apps</span> Espace Super Admin
-              </button>
+          <div class="gs-panel" style="grid-column:span 2">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="goToSuperAdminTab('etablissements')">Gérer les établissements</button>
+              <button class="btn btn-secondary btn-block" (click)="goToSuperAdminTab('utilisateurs')">Voir les utilisateurs</button>
+              <button class="btn btn-secondary btn-block" (click)="goToSuperAdminTab('audit')">Journal d'audit</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/super-admin')">Espace Super Admin</button>
             </div>
           </div>
         </div>
@@ -108,343 +134,141 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
       @if (role() === RoleUtilisateur.DG) {
         <!-- DG DASHBOARD -->
         @if (kpi().alertes?.length > 0) {
-          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-6 flex gap-3">
-            <span class="material-symbols-outlined text-amber-600 text-xl mt-0.5">warning</span>
+          <div style="border:1px solid var(--color-divider);border-left:none;background:var(--color-surface);padding:16px 20px;display:flex;gap:12px;align-items:flex-start">
+            <span style="width:8px;height:8px;background:var(--color-accent);margin-top:6px;flex:none"></span>
             <div>
-              <p class="font-semibold text-amber-900 text-sm mb-2">Alertes ({{ kpi().alertes.length }})</p>
+              <p style="font-family:var(--font-heading);font-weight:800;font-size:14px;margin:0 0 4px">{{ kpi().alertes.length }} alerte(s)</p>
               @for (a of kpi().alertes; track $index) {
-                <div class="flex items-center gap-2 py-1">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" [class]="a.severity === 'high' ? 'bg-red-100 text-red-700' : (a.severity === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700')">{{ a.type }}</span>
-                  <span class="text-sm text-slate-700">{{ a.message }}</span>
-                </div>
+                <p style="font-size:13px;margin:0 0 4px;color:color-mix(in srgb, var(--color-text) 78%, transparent)">{{ a.message }}</p>
               }
             </div>
           </div>
         }
 
-        <!-- KPI cards row 1: Effectifs globaux -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Étudiants</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().etudiants }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Enseignants</p><p class="text-3xl font-bold text-amber-500 mt-2">{{ kpi().enseignants }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Classes</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().classes }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filières</p><p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().filieres }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Recouvrement</p><p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().tauxRecouvrement }}%</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prospects</p><p class="text-3xl font-bold text-amber-700 mt-2">{{ kpi().prospects }}</p></div>
+        <div>
+          <h6 style="margin:0 0 12px">Effectifs &amp; académique</h6>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+            <div class="gs-stat"><span class="gs-stat-label">Étudiants</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().etudiants }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Enseignants</span><span class="gs-stat-num">{{ kpi().enseignants }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Classes</span><span class="gs-stat-num">{{ kpi().classes }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Filières</span><span class="gs-stat-num">{{ kpi().filieres }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Recouvrement</span><span class="gs-stat-num">{{ kpi().tauxRecouvrement }}%</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Prospects</span><span class="gs-stat-num">{{ kpi().prospects }}</span></div>
+          </div>
         </div>
 
-        <!-- KPI cards row 2: DSI indicators -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Utilisateurs</p><p class="text-3xl font-bold text-indigo-600 mt-2">{{ kpi().dsiTotalUsers }}</p><p class="text-xs text-slate-400 mt-1">{{ kpi().dsiActiveUsers }} actifs · {{ kpi().dsiBlockedUsers }} bloqués</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Salles</p><p class="text-3xl font-bold text-cyan-600 mt-2">{{ kpi().dsiSalles }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Matières</p><p class="text-3xl font-bold text-purple-600 mt-2">{{ kpi().dsiMatieres }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Affectations</p><p class="text-3xl font-bold text-pink-600 mt-2">{{ kpi().dsiAffectations }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Encaissé</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }}<span class="text-sm"> FCFA</span></p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Restant</p><p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().restant | number:'1.0-0':'fr-FR' }}<span class="text-sm"> FCFA</span></p></div>
+        <div>
+          <h6 style="margin:0 0 12px">Utilisateurs &amp; infrastructure (DSI)</h6>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+            <div class="gs-stat"><span class="gs-stat-label">Utilisateurs</span><span class="gs-stat-num">{{ kpi().dsiTotalUsers }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Salles</span><span class="gs-stat-num">{{ kpi().dsiSalles }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Matières</span><span class="gs-stat-num">{{ kpi().dsiMatieres }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Affectations</span><span class="gs-stat-num">{{ kpi().dsiAffectations }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Encaissé</span><span class="gs-stat-num" style="font-size:22px">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Restant</span><span class="gs-stat-num" style="font-size:22px;color:var(--color-accent-700)">{{ kpi().restant | number:'1.0-0':'fr-FR' }}</span></div>
+          </div>
         </div>
 
-        <!-- Charts row 1: Evolution inscriptions (courbe) + Evolution paiements (courbe) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="font-bold text-lg text-slate-900">Évolution des inscriptions</h3>
-              <span class="text-xs text-slate-400">{{ kpi().evolutionInscriptions?.length || 0 }} mois</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head">
+              <h3 style="margin:0;font-size:16px">Évolution des inscriptions</h3>
+              <span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ kpi().evolutionInscriptions?.length || 0 }} mois</span>
             </div>
-            <div class="p-4">
+            <div class="gs-panel-body">
               @if (kpi().evolutionInscriptions?.length > 0) {
-                <svg viewBox="0 0 500 220" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <linearGradient id="grad-inscriptions" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
-                      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <line x1="30" y1="30" x2="470" y2="30" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="110" x2="470" y2="110" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="190" x2="470" y2="190" stroke="#e2e8f0" stroke-width="1"/>
-                  <path [attr.d]="areaChartPath(kpi().evolutionInscriptions, 'count')" fill="url(#grad-inscriptions)"/>
-                  <path [attr.d]="lineChartPath(kpi().evolutionInscriptions, 'count')" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  @for (p of lineChartPoints(kpi().evolutionInscriptions, 'count').split(' '); track $index) {
-                    <circle [attr.cx]="p.split(',')[0]" [attr.cy]="p.split(',')[1]" r="3.5" fill="#fff" stroke="#6366f1" stroke-width="2"/>
-                  }
-                  @for (l of chartLabels(kpi().evolutionInscriptions); track $index) {
-                    <text [attr.x]="l.x" y="210" text-anchor="middle" font-size="10" fill="#94a3b8">{{ l.label }}</text>
-                  }
-                </svg>
-                <div class="flex items-center justify-between mt-2 px-2">
-                  <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-indigo-500"></span><span class="text-slate-600">Inscriptions / mois</span></div>
-                  <strong class="text-slate-900">{{ totalInscriptions() }} total</strong>
-                </div>
-              } @else {
-                <div class="h-[200px] flex items-center justify-center text-sm text-slate-400">Aucune donnée pour l'année active</div>
-              }
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="font-bold text-lg text-slate-900">Évolution des paiements</h3>
-              <span class="text-xs text-slate-400">12 derniers mois</span>
-            </div>
-            <div class="p-4">
-              @if (kpi().evolutionPaiements?.length > 0) {
-                <svg viewBox="0 0 500 220" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <linearGradient id="grad-paiements" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
-                      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <line x1="30" y1="30" x2="470" y2="30" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="110" x2="470" y2="110" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="190" x2="470" y2="190" stroke="#e2e8f0" stroke-width="1"/>
-                  <path [attr.d]="areaChartPath(kpi().evolutionPaiements, 'montant')" fill="url(#grad-paiements)"/>
-                  <path [attr.d]="lineChartPath(kpi().evolutionPaiements, 'montant')" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  @for (p of lineChartPoints(kpi().evolutionPaiements, 'montant').split(' '); track $index) {
-                    <circle [attr.cx]="p.split(',')[0]" [attr.cy]="p.split(',')[1]" r="3.5" fill="#fff" stroke="#10b981" stroke-width="2"/>
-                  }
-                  @for (l of chartLabels(kpi().evolutionPaiements); track $index) {
-                    <text [attr.x]="l.x" y="210" text-anchor="middle" font-size="10" fill="#94a3b8">{{ l.label }}</text>
-                  }
-                </svg>
-                <div class="flex items-center justify-between mt-2 px-2">
-                  <div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span class="text-slate-600">Montant encaissé / mois</span></div>
-                  <strong class="text-slate-900">{{ totalPaiements() | number:'1.0-0':'fr-FR' }} FCFA</strong>
-                </div>
-              } @else {
-                <div class="h-[200px] flex items-center justify-center text-sm text-slate-400">Aucun paiement enregistré</div>
-              }
-            </div>
-          </div>
-        </div>
-
-        <!-- Charts row 2: Prospects evolution (dual curve) + Filières donut -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="font-bold text-lg text-slate-900">Évolution des prospects</h3>
-              <span class="text-xs text-slate-400">12 derniers mois</span>
-            </div>
-            <div class="p-4">
-              @if (kpi().evolutionProspects?.length > 0) {
-                <svg viewBox="0 0 500 220" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <linearGradient id="grad-prospects" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.2"/>
-                      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-inscrits" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
-                      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <line x1="30" y1="30" x2="470" y2="30" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="110" x2="470" y2="110" stroke="#f1f5f9" stroke-width="1"/>
-                  <line x1="30" y1="190" x2="470" y2="190" stroke="#e2e8f0" stroke-width="1"/>
-                  <path [attr.d]="areaChartPath(kpi().evolutionProspects, 'total')" fill="url(#grad-prospects)"/>
-                  <path [attr.d]="lineChartPath(kpi().evolutionProspects, 'total')" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path [attr.d]="lineChartPath(kpi().evolutionProspects, 'inscrits')" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,3"/>
-                  @for (p of lineChartPoints(kpi().evolutionProspects, 'total').split(' '); track $index) {
-                    <circle [attr.cx]="p.split(',')[0]" [attr.cy]="p.split(',')[1]" r="3" fill="#fff" stroke="#f59e0b" stroke-width="2"/>
-                  }
-                  @for (l of chartLabels(kpi().evolutionProspects); track $index) {
-                    <text [attr.x]="l.x" y="210" text-anchor="middle" font-size="10" fill="#94a3b8">{{ l.label }}</text>
-                  }
-                </svg>
-                <div class="flex items-center justify-between mt-2 px-2">
-                  <div class="flex items-center gap-4 text-sm">
-                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span><span class="text-slate-600">Prospects</span></div>
-                    <div class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-emerald-500"></span><span class="text-slate-600">Inscrits</span></div>
-                  </div>
-                  <strong class="text-slate-900">{{ totalProspects() }} total</strong>
-                </div>
-              } @else {
-                <div class="h-[200px] flex items-center justify-center text-sm text-slate-400">Aucune donnée</div>
-              }
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Répartition par filière</h3></div>
-            <div class="p-6 flex items-center gap-6">
-              @if (donutSegments().length > 0) {
-                <div class="relative shrink-0">
-                  <svg width="160" height="160" viewBox="0 0 36 36" class="transform -rotate-90">
-                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" stroke-width="3.5"/>
-                    @for (seg of donutSegments(); track seg.filiere) {
-                      <circle cx="18" cy="18" r="15.915" fill="none" [attr.stroke]="seg.color" stroke-width="3.5" [attr.stroke-dasharray]="seg.pct + ' ' + (100 - seg.pct)" [attr.stroke-dashoffset]="100 - seg.offset" style="transition: stroke-dasharray 0.5s;"/>
-                    }
-                  </svg>
-                  <div class="absolute inset-0 flex flex-col items-center justify-center">
-                    <span class="text-2xl font-bold text-slate-900">{{ donutTotal() }}</span>
-                    <span class="text-xs text-slate-400">étudiants</span>
-                  </div>
-                </div>
-                <div class="flex flex-col gap-2 flex-1 min-w-0">
-                  @for (seg of donutSegments(); track seg.filiere) {
-                    <div class="flex items-center gap-2 text-sm">
-                      <span class="w-3 h-3 rounded-sm shrink-0" [style.background]="seg.color"></span>
-                      <span class="text-slate-700 truncate flex-1">{{ seg.filiere }}</span>
-                      <strong class="text-slate-900">{{ seg.effectif }}</strong>
-                      <span class="text-xs text-slate-400 w-10 text-right">{{ seg.pct.toFixed(0) }}%</span>
+                <div style="display:flex;align-items:flex-end;gap:14px;height:160px">
+                  @for (m of kpi().evolutionInscriptions; track m.mois; let last = $last) {
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">
+                      <div style="width:100%" [style.height.px]="evolutionBarHeight(m.count)" [style.background]="last ? 'var(--color-accent)' : 'var(--color-neutral-300)'"></div>
+                      <span style="font-size:11px" [style.color]="last ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)'" [style.font-weight]="last ? 600 : 400">{{ m.mois }}</span>
                     </div>
                   }
                 </div>
-              } @else {
-                <div class="h-[160px] flex items-center justify-center w-full text-sm text-slate-400">Aucune donnée</div>
-              }
-            </div>
-          </div>
-        </div>
-
-        <!-- Charts row 3: Prospect status breakdown (horizontal bars) + Recouvrement vs Objectif gauge -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Statut des prospects</h3></div>
-            <div class="p-6 flex flex-col gap-4">
-              @if (kpi().repartitionProspects?.total > 0) {
-                <div>
-                  <div class="flex justify-between text-sm mb-1.5"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-amber-400"></span>Contactés</span><strong>{{ kpi().repartitionProspects?.contactes || 0 }} <span class="text-slate-400 font-normal">({{ ((kpi().repartitionProspects?.contactes || 0) / kpi().repartitionProspects.total * 100).toFixed(0) }}%)</span></strong></div>
-                  <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-amber-400 rounded-full transition-all" [style.width.%]="(kpi().repartitionProspects?.contactes || 0) / kpi().repartitionProspects.total * 100"></div></div>
-                </div>
-                <div>
-                  <div class="flex justify-between text-sm mb-1.5"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-emerald-500"></span>Inscrits</span><strong>{{ kpi().repartitionProspects?.inscrits || 0 }} <span class="text-slate-400 font-normal">({{ ((kpi().repartitionProspects?.inscrits || 0) / kpi().repartitionProspects.total * 100).toFixed(0) }}%)</span></strong></div>
-                  <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full transition-all" [style.width.%]="(kpi().repartitionProspects?.inscrits || 0) / kpi().repartitionProspects.total * 100"></div></div>
-                </div>
-                <div>
-                  <div class="flex justify-between text-sm mb-1.5"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-red-400"></span>Perdus</span><strong>{{ kpi().repartitionProspects?.perdus || 0 }} <span class="text-slate-400 font-normal">({{ ((kpi().repartitionProspects?.perdus || 0) / kpi().repartitionProspects.total * 100).toFixed(0) }}%)</span></strong></div>
-                  <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-red-400 rounded-full transition-all" [style.width.%]="(kpi().repartitionProspects?.perdus || 0) / kpi().repartitionProspects.total * 100"></div></div>
-                </div>
-                <div class="pt-2 border-t border-slate-100 flex justify-between text-sm">
-                  <span class="text-slate-500">Total prospects</span>
-                  <strong class="text-slate-900">{{ kpi().repartitionProspects?.total }}</strong>
+                <div class="hr" style="margin:16px 0 12px"></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:color-mix(in srgb, var(--color-text) 65%, transparent)">Total sur la période</span>
+                  <strong style="font-family:var(--font-heading)">{{ totalInscriptions() }} inscriptions</strong>
                 </div>
               } @else {
-                <div class="h-[120px] flex items-center justify-center text-sm text-slate-400">Aucun prospect enregistré</div>
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Aucune donnée pour l'année active.</p>
               }
             </div>
           </div>
 
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Taux de recouvrement</h3></div>
-            <div class="p-6 flex items-center gap-6">
-              <div class="relative shrink-0">
-                <svg width="160" height="160" viewBox="0 0 36 36" class="transform -rotate-90">
-                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" stroke-width="3.5"/>
-                  <circle cx="18" cy="18" r="15.915" fill="none" [attr.stroke]="kpi().tauxRecouvrement >= 75 ? '#10b981' : (kpi().tauxRecouvrement >= 50 ? '#f59e0b' : '#ef4444')" stroke-width="3.5" [attr.stroke-dasharray]="kpi().tauxRecouvrement + ' ' + (100 - kpi().tauxRecouvrement)" stroke-dashoffset="0" stroke-linecap="round" style="transition: stroke-dasharray 0.5s;"/>
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span class="text-3xl font-bold text-slate-900">{{ kpi().tauxRecouvrement }}%</span>
-                  <span class="text-xs text-slate-400 mt-0.5">recouvré</span>
-                </div>
-              </div>
-              <div class="flex flex-col gap-3 flex-1">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Répartition par filière</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:14px">
+              @for (seg of donutSegments(); track seg.filiere) {
                 <div>
-                  <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Encaissé</div>
-                  <div class="text-xl font-bold text-emerald-600">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }} <span class="text-sm font-normal">FCFA</span></div>
-                </div>
-                <div>
-                  <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Restant</div>
-                  <div class="text-xl font-bold text-red-600">{{ kpi().restant | number:'1.0-0':'fr-FR' }} <span class="text-sm font-normal">FCFA</span></div>
-                </div>
-                <div class="pt-2 border-t border-slate-100">
-                  <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">En règle / En retard</div>
-                  <div class="text-sm"><strong class="text-emerald-600">{{ kpi().enRegle }}</strong> / <strong class="text-red-600">{{ kpi().enRetard }}</strong></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Objectives row: DAF + Académique + Marketing -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Objectifs financiers (DAF)</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div>
-                <div class="flex justify-between mb-1.5 text-sm"><span>Taux de recouvrement</span><strong>{{ kpi().tauxRecouvrement }}%</strong></div>
-                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all" [style.width.%]="kpi().tauxRecouvrement"></div></div>
-              </div>
-              <div class="flex justify-between text-sm"><span>Encaissé</span><strong class="text-green-600">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }} FCFA</strong></div>
-              <div class="flex justify-between text-sm"><span>Restant à recouvrer</span><strong class="text-red-600">{{ kpi().restant | number:'1.0-0':'fr-FR' }} FCFA</strong></div>
-              <div class="flex justify-between text-sm"><span>Étudiants en règle</span><strong class="text-green-600">{{ kpi().enRegle }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Étudiants en retard</span><strong class="text-red-600">{{ kpi().enRetard }}</strong></div>
-            </div>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Objectifs académiques</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div>
-                <div class="flex justify-between mb-1.5 text-sm"><span>Taux de réussite</span><strong>{{ kpi().tauxReussite }}%</strong></div>
-                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full transition-all" [style.width.%]="kpi().tauxReussite"></div></div>
-              </div>
-              <div class="flex justify-between text-sm"><span>Notes saisies</span><strong>{{ kpi().notesSaisies }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Bulletins générés</span><strong>{{ kpi().bulletinsGeneres }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Bulletins validés</span><strong class="text-green-600">{{ kpi().bulletinsValides }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Abandons</span><strong class="text-red-600">{{ kpi().abandons }}</strong></div>
-            </div>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Objectifs marketing</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div class="flex justify-between text-sm"><span>Total prospects</span><strong class="text-slate-900">{{ kpi().marketingTotal }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Inscrits</span><strong class="text-green-600">{{ kpi().marketingInscrits }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Perdus</span><strong class="text-red-600">{{ kpi().marketingPerdus }}</strong></div>
-              <div>
-                <div class="flex justify-between mb-1.5 text-sm"><span>Taux de conversion</span><strong>{{ kpi().marketingTauxConversion }}%</strong></div>
-                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-amber-500 rounded-full transition-all" [style.width.%]="kpi().marketingTauxConversion"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DSI system health + Top classes -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Système & infrastructure (DSI)</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div>
-                <div class="flex justify-between mb-1.5 text-sm"><span>Utilisateurs actifs</span><strong>{{ kpi().dsiActiveUsers }} / {{ kpi().dsiTotalUsers }}</strong></div>
-                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full transition-all" [style.width.%]="kpi().dsiTotalUsers > 0 ? (kpi().dsiActiveUsers / kpi().dsiTotalUsers) * 100 : 0"></div></div>
-              </div>
-              <div class="flex justify-between text-sm"><span>Utilisateurs bloqués</span><strong class="text-red-600">{{ kpi().dsiBlockedUsers }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Salles configurées</span><strong>{{ kpi().dsiSalles }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Matières</span><strong>{{ kpi().dsiMatieres }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Affectations matières</span><strong>{{ kpi().dsiAffectations }}</strong></div>
-            </div>
-          </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Top 5 classes par effectif</h3></div>
-            <div class="p-6">
-              @for (c of kpi().topClasses; track c.classe) {
-                <div class="py-2 border-b border-slate-100 last:border-0">
-                  <div class="flex justify-between text-sm mb-1"><span class="text-slate-700">{{ c.classe }} <span class="text-xs text-slate-400">({{ c.filiere }})</span></span><strong class="text-slate-900">{{ c.effectif }}/{{ c.capaciteMax }}</strong></div>
-                  <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all" [style.width.%]="c.tauxRemplissage"></div></div>
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>{{ seg.filiere }}</span><strong>{{ seg.effectif }} · {{ seg.pct.toFixed(0) }}%</strong></div>
+                  <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="seg.pct"></div></div>
                 </div>
               } @empty {
-                <p class="text-sm text-slate-400 text-center py-4">Aucune donnée</p>
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Aucune donnée disponible.</p>
               }
+              <div class="hr" style="margin:2px 0"></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:color-mix(in srgb, var(--color-text) 65%, transparent)">Total étudiants</span><strong>{{ donutTotal() }}</strong></div>
             </div>
           </div>
         </div>
 
-        <!-- Actions + Exports -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/daf')"><span class="material-symbols-outlined text-xl">wallet</span> Tableau financier</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/dg/utilisateurs')"><span class="material-symbols-outlined text-xl">groups</span> Gérer les utilisateurs</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/daf/recus')"><span class="material-symbols-outlined text-xl">description</span> Templates de reçus</button>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Recouvrement</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de recouvrement</span><strong>{{ kpi().tauxRecouvrement }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().tauxRecouvrement"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Encaissé</span><strong>{{ kpi().encaisse | number:'1.0-0':'fr-FR' }} <span style="font-weight:400">FCFA</span></strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Restant</span><strong style="color:var(--color-accent-700)">{{ kpi().restant | number:'1.0-0':'fr-FR' }} <span style="font-weight:400">FCFA</span></strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>En règle / En retard</span><strong>{{ kpi().enRegle }} / {{ kpi().enRetard }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Exports rapides</h3></div>
-            <div class="p-6 flex flex-wrap gap-3">
-              <button (click)="exportData('etudiants/csv')" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm"><span class="material-symbols-outlined text-lg">download</span> Étudiants (CSV)</button>
-              <button (click)="exportData('paiements/csv')" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm"><span class="material-symbols-outlined text-lg">download</span> Paiements (CSV)</button>
-              <button (click)="exportData('prospects/csv')" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm"><span class="material-symbols-outlined text-lg">download</span> Prospects (CSV)</button>
-              <button (click)="exportData('tableau-financier/pdf')" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm"><span class="material-symbols-outlined text-lg">picture_as_pdf</span> Tableau financier (PDF)</button>
-              <button (click)="exportData('liste-etudiants/pdf')" class="flex items-center gap-2 h-10 px-4 border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm"><span class="material-symbols-outlined text-lg">picture_as_pdf</span> Liste étudiants (PDF)</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Académique</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de réussite</span><strong>{{ kpi().tauxReussite }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().tauxReussite"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Bulletins générés</span><strong>{{ kpi().bulletinsGeneres }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Bulletins validés</span><strong>{{ kpi().bulletinsValides }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Abandons</span><strong style="color:var(--color-accent-700)">{{ kpi().abandons }}</strong></div>
+            </div>
+          </div>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Marketing</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de conversion</span><strong>{{ kpi().marketingTauxConversion }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().marketingTauxConversion"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Prospects</span><strong>{{ kpi().marketingTotal }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Inscrits</span><strong>{{ kpi().marketingInscrits }}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Top 5 classes par effectif</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:14px">
+              @for (c of kpi().topClasses; track c.classe) {
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>{{ c.classe }} <span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">· {{ c.filiere }}</span></span><strong>{{ c.effectif }}/{{ c.capaciteMax }}</strong></div>
+                  <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="c.tauxRemplissage"></div></div>
+                </div>
+              } @empty {
+                <p style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0">Aucune donnée disponible.</p>
+              }
+            </div>
+          </div>
+
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/daf')">Tableau financier</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/dg/utilisateurs')">Gérer les utilisateurs</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/daf/recus')">Templates de reçus</button>
+              <div class="hr"></div>
+              <button class="btn btn-secondary btn-block" (click)="exportData('etudiants/csv')">Exporter étudiants (CSV)</button>
+              <button class="btn btn-secondary btn-block" (click)="exportData('tableau-financier/pdf')">Exporter tableau financier (PDF)</button>
             </div>
           </div>
         </div>
@@ -452,27 +276,28 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.DAF) {
         <!-- DAF DASHBOARD -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Taux recouvrement</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().tauxRecouvrement }}%</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Encaissé</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }} <span class="text-sm">FCFA</span></p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Restant</p><p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().restant | number:'1.0-0':'fr-FR' }} <span class="text-sm">FCFA</span></p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Taux recouvrement</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().tauxRecouvrement }}%</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Encaissé</span><span class="gs-stat-num" style="font-size:24px">{{ kpi().encaisse | number:'1.0-0':'fr-FR' }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Restant</span><span class="gs-stat-num" style="font-size:24px;color:var(--color-accent-700)">{{ kpi().restant | number:'1.0-0':'fr-FR' }}</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Objectif: Recouvrement</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div><div class="flex justify-between mb-1.5 text-sm"><span>Taux de recouvrement</span><strong>{{ kpi().tauxRecouvrement }}%</strong></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full transition-all" [style.width.%]="kpi().tauxRecouvrement"></div></div></div>
-              <div class="flex justify-between text-sm"><span>Étudiants en règle</span><strong class="text-green-600">{{ kpi().enRegle }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Étudiants en retard</span><strong class="text-red-600">{{ kpi().enRetard }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Étudiants inscrits</span><strong>{{ kpi().etudiants }}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Objectif : Recouvrement</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de recouvrement</span><strong>{{ kpi().tauxRecouvrement }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().tauxRecouvrement"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Étudiants en règle</span><strong>{{ kpi().enRegle }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Étudiants en retard</span><strong style="color:var(--color-accent-700)">{{ kpi().enRetard }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Étudiants inscrits</span><strong>{{ kpi().etudiants }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/daf')"><span class="material-symbols-outlined text-xl">wallet</span> Tableau financier</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/daf')"><span class="material-symbols-outlined text-xl">person_add</span> Enregistrer un élève</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/dg/utilisateurs')"><span class="material-symbols-outlined text-xl">groups</span> Gérer les utilisateurs</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/daf')">Tableau financier</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/daf')">Enregistrer un élève</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/dg/utilisateurs')">Gérer les utilisateurs</button>
             </div>
           </div>
         </div>
@@ -480,29 +305,29 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.DSI) {
         <!-- DSI DASHBOARD -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Utilisateurs</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().totalUsers }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Enseignants</p><p class="text-3xl font-bold text-amber-500 mt-2">{{ kpi().enseignants }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Classes</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().classes }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filières</p><p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().filieres }}</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Utilisateurs</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().totalUsers }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Enseignants</span><span class="gs-stat-num">{{ kpi().enseignants }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Classes</span><span class="gs-stat-num">{{ kpi().classes }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Filières</span><span class="gs-stat-num">{{ kpi().filieres }}</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Gestion système</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div class="flex justify-between text-sm"><span>Utilisateurs actifs</span><strong class="text-green-600">{{ kpi().activeUsers }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Utilisateurs bloqués</span><strong class="text-red-600">{{ kpi().blockedUsers }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Étudiants inscrits</span><strong>{{ kpi().etudiants }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Salles configurées</span><strong>{{ kpi().salles }}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Gestion système</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Utilisateurs actifs</span><strong>{{ kpi().activeUsers }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Utilisateurs bloqués</span><strong style="color:var(--color-accent-700)">{{ kpi().blockedUsers }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Étudiants inscrits</span><strong>{{ kpi().etudiants }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Salles configurées</span><strong>{{ kpi().salles }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/dsi')"><span class="material-symbols-outlined text-xl">person_add</span> Créer un enseignant</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/dsi')"><span class="material-symbols-outlined text-xl">groups</span> Enregistrer un élève</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/dsi')"><span class="material-symbols-outlined text-xl">link</span> Affecter les enseignants</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/etudes/emploi-du-temps')"><span class="material-symbols-outlined text-xl">schedule</span> Emploi du temps</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/dsi')">Créer un enseignant</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/dsi')">Enregistrer un élève</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/dsi')">Affecter les enseignants</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/etudes/emploi-du-temps')">Emploi du temps</button>
             </div>
           </div>
         </div>
@@ -510,29 +335,30 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.ETUDES) {
         <!-- ETUDES DASHBOARD -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Étudiants</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().etudiants }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Classes</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().classes }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filières</p><p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().filieres }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Salles</p><p class="text-3xl font-bold text-amber-700 mt-2">{{ kpi().salles }}</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Étudiants</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().etudiants }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Classes</span><span class="gs-stat-num">{{ kpi().classes }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Filières</span><span class="gs-stat-num">{{ kpi().filieres }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Salles</span><span class="gs-stat-num">{{ kpi().salles }}</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Objectifs académiques</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div><div class="flex justify-between mb-1.5 text-sm"><span>Taux de réussite</span><strong>{{ kpi().tauxReussite }}%</strong></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full transition-all" [style.width.%]="kpi().tauxReussite"></div></div></div>
-              <div class="flex justify-between text-sm"><span>Notes saisies</span><strong>{{ kpi().notesSaisies }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Bulletins générés</span><strong>{{ kpi().bulletinsGeneres }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Bulletins validés</span><strong class="text-green-600">{{ kpi().bulletinsValides }}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Objectifs académiques</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de réussite</span><strong>{{ kpi().tauxReussite }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().tauxReussite"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Notes saisies</span><strong>{{ kpi().notesSaisies }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Bulletins générés</span><strong>{{ kpi().bulletinsGeneres }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Bulletins validés</span><strong>{{ kpi().bulletinsValides }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/etudes')"><span class="material-symbols-outlined text-xl">menu_book</span> Direction des études</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/etudes/emploi-du-temps')"><span class="material-symbols-outlined text-xl">schedule</span> Emploi du temps</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/etudes/periodes')"><span class="material-symbols-outlined text-xl">event</span> Périodes scolaires</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/etudes/salles')"><span class="material-symbols-outlined text-xl">location_on</span> Salles</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/etudes')">Direction des études</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/etudes/emploi-du-temps')">Emploi du temps</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/etudes/periodes')">Périodes scolaires</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/etudes/salles')">Salles</button>
             </div>
           </div>
         </div>
@@ -540,29 +366,30 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.ENSEIGNANT) {
         <!-- ENSEIGNANT DASHBOARD -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Classes affectées</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().classes }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Matières</p><p class="text-3xl font-bold text-amber-500 mt-2">{{ kpi().matieres }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Créneaux/sem</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().creneaux }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Notes saisies</p><p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().notesSaisies }}</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Classes affectées</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().classes }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Matières</span><span class="gs-stat-num">{{ kpi().matieres }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Créneaux/sem</span><span class="gs-stat-num">{{ kpi().creneaux }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Notes saisies</span><span class="gs-stat-num">{{ kpi().notesSaisies }}</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Saisie des notes</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div><div class="flex justify-between mb-1.5 text-sm"><span>Progression saisie</span><strong>{{ kpi().notesSaisies }} notes</strong></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all" [style.width.%]="kpi().progressionSaisie"></div></div></div>
-              <div class="flex justify-between text-sm"><span>Devoirs créés</span><strong>{{ kpi().devoirs }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Devoirs à corriger</span><strong class="text-amber-500">{{ kpi().devoirsACorriger }}</strong></div>
-              <div class="flex justify-between text-sm"><span>Absences enregistrées</span><strong>{{ kpi().absences }}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Saisie des notes</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Progression saisie</span><strong>{{ kpi().notesSaisies }} notes</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().progressionSaisie"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Devoirs créés</span><strong>{{ kpi().devoirs }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Devoirs à corriger</span><strong style="color:var(--color-accent-700)">{{ kpi().devoirsACorriger }}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Absences enregistrées</span><strong>{{ kpi().absences }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/enseignant/notes')"><span class="material-symbols-outlined text-xl">edit</span> Saisir des notes</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/enseignant/devoirs')"><span class="material-symbols-outlined text-xl">description</span> Gérer les devoirs</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/enseignant/absences')"><span class="material-symbols-outlined text-xl">warning</span> Saisir les absences</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/enseignant')"><span class="material-symbols-outlined text-xl">calendar_month</span> Mon emploi du temps</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/enseignant/notes')">Saisir des notes</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/enseignant/devoirs')">Gérer les devoirs</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/enseignant/absences')">Saisir les absences</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/enseignant')">Mon emploi du temps</button>
             </div>
           </div>
         </div>
@@ -570,26 +397,27 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.ETUDIANT) {
         <!-- ETUDIANT DASHBOARD -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Moyenne générale</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().moyenne }}<span class="text-sm">/20</span></p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rang</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().rang }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Absences</p><p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().absences }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Reste à payer</p><p class="text-3xl font-bold text-amber-500 mt-2">{{ kpi().reste }} <span class="text-sm">FCFA</span></p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Moyenne générale</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().moyenne }}<span style="font-size:16px">/20</span></span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Rang</span><span class="gs-stat-num">{{ kpi().rang }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Absences</span><span class="gs-stat-num">{{ kpi().absences }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Reste à payer</span><span class="gs-stat-num" style="font-size:22px">{{ kpi().reste }}</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Mon parcours académique</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <div><div class="flex justify-between mb-1.5 text-sm"><span>Progression scolarité</span><strong>{{ kpi().tauxPaiement }}%</strong></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all" [style.width.%]="kpi().tauxPaiement"></div></div></div>
-              <div class="flex justify-between text-sm"><span>Statut paiement</span><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [class]="kpi().reste === 0 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'">{{ kpi().reste === 0 ? 'À jour' : 'En retard' }}</span></div>
-              <div class="flex justify-between text-sm"><span>Devoirs à rendre</span><strong class="text-amber-500">{{ kpi().devoirsARendre }}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Mon parcours académique</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Progression scolarité</span><strong>{{ kpi().tauxPaiement }}%</strong></div>
+              <div class="gs-bartrack"><div class="gs-barfill" [style.width.%]="kpi().tauxPaiement"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Statut paiement</span><span class="tag" [class]="kpi().reste === 0 ? 'tag-success' : 'tag-accent'">{{ kpi().reste === 0 ? 'À jour' : 'En retard' }}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Devoirs à rendre</span><strong style="color:var(--color-accent-700)">{{ kpi().devoirsARendre }}</strong></div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/etudiant/bulletins')"><span class="material-symbols-outlined text-xl">description</span> Mes bulletins</button>
-              <button class="flex items-center gap-2 h-11 px-5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-all text-sm" (click)="navigate('/etudiant')"><span class="material-symbols-outlined text-xl">home</span> Mon espace</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/etudiant/bulletins')">Mes bulletins</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/etudiant')">Mon espace</button>
             </div>
           </div>
         </div>
@@ -597,36 +425,39 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
 
       @if (role() === RoleUtilisateur.SECRETAIRE) {
         <!-- SECRETAIRE DASHBOARD -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Étudiants</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().etudiants }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inscriptions du jour</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().inscriptionsJour }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prospects</p><p class="text-3xl font-bold text-amber-500 mt-2">{{ kpi().prospects }}</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Étudiants</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().etudiants }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Inscriptions du jour</span><span class="gs-stat-num">{{ kpi().inscriptionsJour }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Prospects</span><span class="gs-stat-num">{{ kpi().prospects }}</span></div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden mt-4">
-          <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-          <div class="p-6 flex flex-wrap gap-3">
-            <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/secretariat')"><span class="material-symbols-outlined text-xl">description</span> Secrétariat</button>
+        <div class="gs-panel">
+          <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+          <div class="gs-panel-body" style="display:flex;flex-wrap:wrap;gap:10px">
+            <button class="btn btn-primary" (click)="navigate('/secretariat')">Secrétariat</button>
           </div>
         </div>
       }
 
       @if (role() === RoleUtilisateur.MARKETING) {
         <!-- MARKETING DASHBOARD -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prospects total</p><p class="text-3xl font-bold text-primary mt-2">{{ kpi().prospects }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inscrits</p><p class="text-3xl font-bold text-green-600 mt-2">{{ kpi().inscrits }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perdus</p><p class="text-3xl font-bold text-red-600 mt-2">{{ kpi().perdus }}</p></div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Taux conversion</p><p class="text-3xl font-bold text-teal-600 mt-2">{{ kpi().tauxConversion }}%</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px">
+          <div class="gs-stat"><span class="gs-stat-label">Prospects total</span><span class="gs-stat-num" style="color:var(--color-accent)">{{ kpi().prospects }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Inscrits</span><span class="gs-stat-num">{{ kpi().inscrits }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Perdus</span><span class="gs-stat-num">{{ kpi().perdus }}</span></div>
+          <div class="gs-stat"><span class="gs-stat-label">Taux conversion</span><span class="gs-stat-num">{{ kpi().tauxConversion }}%</span></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Conversion prospects</h3></div>
-            <div class="p-6"><div class="flex justify-between mb-1.5 text-sm"><span>Taux de conversion</span><strong>{{ kpi().tauxConversion }}%</strong></div><div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full transition-all" [style.width.%]="kpi().tauxConversion"></div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Conversion prospects</h3></div>
+            <div class="gs-panel-body">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span>Taux de conversion</span><strong>{{ kpi().tauxConversion }}%</strong></div>
+              <div class="gs-bartrack" style="margin-top:6px"><div class="gs-barfill" [style.width.%]="kpi().tauxConversion"></div></div>
+            </div>
           </div>
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-lg text-slate-900">Actions rapides</h3></div>
-            <div class="p-6 flex flex-col gap-3">
-              <button class="flex items-center gap-2 h-11 px-5 bg-primary text-white font-semibold rounded-lg hover:bg-primary-hover transition-all text-sm" (click)="navigate('/marketing')"><span class="material-symbols-outlined text-xl">campaign</span> Marketing</button>
+          <div class="gs-panel">
+            <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Actions rapides</h3></div>
+            <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
+              <button class="btn btn-primary btn-block" (click)="navigate('/marketing')">Marketing</button>
             </div>
           </div>
         </div>
@@ -673,20 +504,18 @@ export class DashboardComponent implements OnInit {
   loadKpi() {
     const r = this.role();
     if (r === RoleUtilisateur.SUPER_ADMIN) {
-      this.http.get<any>(`${environment.apiUrl}/admin/tenants/ecoles`).subscribe({
+      this.http.get<SuperAdminStats>(`${environment.apiUrl}/admin/tenants/stats`).subscribe({
+        next: (stats) => this.kpi.update((k) => ({ ...k, ...stats })),
+        error: () => {},
+      });
+      this.http.get<any>(`${environment.apiUrl}/admin/tenants/ecoles`, { params: { limit: 5 }}).subscribe({
         next: (res) => {
           const ecoles = res.data || [];
-          this.kpi.set({
-            totalEcoles: ecoles.length,
-            ecolesActives: ecoles.filter((e: any) => e.actif).length,
-            ecolesBloquees: ecoles.filter((e: any) => !e.actif).length,
+          this.kpi.update((k) => ({
+            ...k,
             ecolesRecentes: ecoles.slice().sort((a: any, b: any) => new Date(b.dateInscription).getTime() - new Date(a.dateInscription).getTime()).slice(0, 5),
-          });
+          }));
         },
-        error: () => this.kpi.set({}),
-      });
-      this.http.get<any>(`${environment.apiUrl}/admin/tenants/utilisateurs`, { params: { limit: '1' } }).subscribe({
-        next: (res) => this.kpi.update((k) => ({ ...k, totalUsers: res.total || 0 })),
         error: () => {},
       });
     } else if (r === RoleUtilisateur.DG) {
@@ -718,9 +547,6 @@ export class DashboardComponent implements OnInit {
           dsiMatieres: d?.indicateursDSI?.totalMatieres || 0,
           dsiAffectations: d?.indicateursDSI?.totalAffectations || 0,
           evolutionInscriptions: d?.evolutionInscriptions || [],
-          evolutionPaiements: d?.evolutionPaiements || [],
-          evolutionProspects: d?.evolutionProspects || [],
-          repartitionProspects: d?.repartitionProspects || { total: 0, inscrits: 0, contactes: 0, perdus: 0 },
           alertes: d?.alertes || [],
           topClasses: d?.topClasses || [],
           repartitionFilieres: d?.repartitionFilieres || [],
@@ -830,49 +656,17 @@ export class DashboardComponent implements OnInit {
     return data.length ? Math.max(...data.map((d: any) => d.count)) : 0;
   });
 
+  evolutionBarHeight(count: number): number {
+    const max = this.evolutionMax();
+    return max ? Math.max(6, Math.round((count / max) * 160)) : 6;
+  }
+
+  barHeightOf(data: any[], valueKey: string, value: number): number {
+    const max = data.length ? Math.max(...data.map((d: any) => d[valueKey] || 0), 1) : 1;
+    return Math.max(6, Math.round((value / max) * 160));
+  }
+
   totalInscriptions = computed(() => (this.kpi()?.evolutionInscriptions || []).reduce((s: number, d: any) => s + d.count, 0));
-  totalPaiements = computed(() => (this.kpi()?.evolutionPaiements || []).reduce((s: number, d: any) => s + d.montant, 0));
-  totalProspects = computed(() => (this.kpi()?.evolutionProspects || []).reduce((s: number, d: any) => s + d.total, 0));
-
-  // --- SVG Line chart helpers ---
-  lineChartPoints(data: any[], valueKey: string, width = 500, height = 180, padding = 30): string {
-    if (!data.length) return '';
-    const max = Math.max(...data.map((d: any) => d[valueKey] || 0), 1);
-    const stepX = (width - padding * 2) / Math.max(data.length - 1, 1);
-    return data.map((d: any, i: number) => {
-      const x = padding + i * stepX;
-      const y = height - padding - ((d[valueKey] || 0) / max) * (height - padding * 2);
-      return `${x},${y}`;
-    }).join(' ');
-  }
-
-  lineChartPath(data: any[], valueKey: string, width = 500, height = 180, padding = 30): string {
-    if (!data.length) return '';
-    const pts = this.lineChartPoints(data, valueKey, width, height, padding).split(' ');
-    let path = `M ${pts[0]}`;
-    for (let i = 1; i < pts.length; i++) {
-      const [px, py] = pts[i - 1].split(',').map(Number);
-      const [x, y] = pts[i].split(',').map(Number);
-      const cx = (px + x) / 2;
-      path += ` C ${cx},${py} ${cx},${y} ${x},${y}`;
-    }
-    return path;
-  }
-
-  areaChartPath(data: any[], valueKey: string, width = 500, height = 180, padding = 30): string {
-    if (!data.length) return '';
-    const linePath = this.lineChartPath(data, valueKey, width, height, padding);
-    const lastX = padding + ((width - padding * 2) / Math.max(data.length - 1, 1)) * (data.length - 1);
-    return `${linePath} L ${lastX},${height - padding} L ${padding},${height - padding} Z`;
-  }
-
-  chartLabels(data: any[], width = 500, padding = 30): { x: number; label: string }[] {
-    if (!data.length) return [];
-    const stepX = (width - padding * 2) / Math.max(data.length - 1, 1);
-    return data.map((d: any, i: number) => ({ x: padding + i * stepX, label: d.mois }));
-  }
-
-  chartMax = (data: any[], key: string) => data.length ? Math.max(...data.map((d: any) => d[key] || 0), 1) : 1;
 
   donutSegments = computed(() => {
     const data = this.kpi()?.repartitionFilieres || [];
@@ -891,6 +685,26 @@ export class DashboardComponent implements OnInit {
   donutTotal = computed(() => {
     const data = this.kpi()?.repartitionFilieres || [];
     return data.reduce((s: number, f: any) => s + (f.effectif || 0), 0);
+  });
+
+  abonnementColors: Record<string, string> = { GRATUIT: '#94a3b8', STANDARD: '#6366f1', PREMIUM: '#10b981', ACTIF: '#10b981', EXPIRE: '#ef4444', SUSPENDU: '#f59e0b' };
+
+  abonnementSegments = computed(() => {
+    const data = this.kpi()?.repartitionAbonnement || [];
+    const total = data.reduce((s: number, r: any) => s + (r.total || 0), 0);
+    if (total === 0) return [];
+    let offset = 0;
+    return data.map((r: any) => {
+      const pct = ((r.total || 0) / total) * 100;
+      const seg = { ...r, pct, color: this.abonnementColors[r.statut] || '#94a3b8', offset };
+      offset += pct;
+      return seg;
+    });
+  });
+
+  abonnementTotal = computed(() => {
+    const data = this.kpi()?.repartitionAbonnement || [];
+    return data.reduce((s: number, r: any) => s + (r.total || 0), 0);
   });
 
   goToSuperAdminTab(tab: string) {

@@ -19,27 +19,26 @@ export class BadgeComponent {
   @Input() dot = false;
 
   get badgeClass(): string {
-    const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
     const variants: Record<string, string> = {
-      success: 'bg-green-100 text-green-800',
-      warning: 'bg-amber-100 text-amber-800',
-      danger: 'bg-red-100 text-red-700',
-      info: 'bg-orange-100 text-orange-700',
-      neutral: 'bg-slate-100 text-slate-800',
-      primary: 'bg-primary/10 text-primary',
+      success: 'tag tag-success',
+      warning: 'tag tag-accent',
+      danger: 'tag tag-danger',
+      info: 'tag tag-neutral',
+      neutral: 'tag tag-neutral',
+      primary: 'tag tag-neutral',
     };
-    return `${base} ${variants[this.variant]}`;
+    return variants[this.variant];
   }
 
   get dotClass(): string {
-    const dots: Record<string, string> = {
-      success: 'bg-green-500',
-      warning: 'bg-amber-500',
-      danger: 'bg-red-500',
-      info: 'bg-primary',
-      neutral: 'bg-slate-400',
-      primary: 'bg-primary',
+    const colors: Record<string, string> = {
+      success: 'var(--color-success)',
+      warning: 'var(--color-accent)',
+      danger: 'var(--color-danger)',
+      info: 'var(--color-primary)',
+      neutral: 'color-mix(in srgb, var(--color-text) 50%, transparent)',
+      primary: 'var(--color-primary)',
     };
-    return `size-1.5 rounded-full mr-2 ${dots[this.variant]}`;
+    return `display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:8px;background:${colors[this.variant]}`;
   }
 }
