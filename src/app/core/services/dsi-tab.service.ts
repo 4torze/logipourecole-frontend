@@ -13,7 +13,8 @@ export class DsiTabService {
     { key: 'etudiants', label: 'Étudiants', icon: 'groups' },
     { key: 'affectations-enseignants', label: 'Affect. Enseignants', icon: 'group_add' },
     { key: 'annees', label: 'Années scolaires', icon: 'calendar_month' },
-    { key: 'audit', label: "Journal d'audit", icon: 'history' },
+    { key: 'notes', label: 'Notes & moyennes', icon: 'grading' },
+    { key: 'relances', label: 'Relances', icon: 'sms' },
   ];
 
   setTab(key: string) {

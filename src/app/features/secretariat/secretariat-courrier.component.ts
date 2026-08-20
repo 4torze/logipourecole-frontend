@@ -26,7 +26,7 @@ import { environment } from '../../../environments/environment';
           </div>
         </div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Type</th><th>Objet</th><th>Expéditeur/Destinataire</th><th>Destinataire interne</th><th>Date</th><th>Actions</th></tr>

@@ -5,6 +5,12 @@ import { CommonModule } from '@angular/common';
   selector: 'app-pagination',
   standalone: true,
   imports: [CommonModule],
+  styles: [`
+    .page-btn { width: 32px; height: 32px; padding: 0; }
+    @media (max-width: 640px) {
+      .page-btn { width: 44px; height: 44px; }
+    }
+  `],
   template: `
     @if (totalItems > 0) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 4px;flex-wrap:wrap">
@@ -25,10 +31,9 @@ import { CommonModule } from '@angular/common';
             } @else {
               <button
                 type="button"
-                class="btn"
+                class="btn page-btn"
                 [class.btn-primary]="p === page"
                 [class.btn-secondary]="p !== page"
-                style="width:32px;height:32px;padding:0"
                 (click)="goTo(p)">
                 {{ p }}
               </button>

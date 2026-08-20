@@ -56,7 +56,7 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               </div>
             </div>
           }
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table"><thead><tr><th>Code</th><th>Nom</th><th>Description</th><th>Classes</th><th>Actions</th></tr></thead>
             <tbody>
               @for (f of pagedFilieres(); track f.id) {
@@ -192,7 +192,7 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               </div>
             </div>
           }
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table"><thead><tr><th>Nom</th><th>Niveau</th><th>Filière</th><th>Capacité</th><th>Inscrits</th><th>Matieres</th><th>Actions</th></tr></thead>
             <tbody>
               @for (c of pagedClasses(); track c.id) {
@@ -214,15 +214,9 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
             <h3 style="margin:0">Matières ({{ filteredMatieres().length }})</h3>
             <button (click)="openMatiereForm()" class="btn btn-primary"><span class="material-symbols-outlined" style="font-size:18px">add</span> Ajouter</button>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-            <div style="position:relative;flex:1">
-              <span class="material-symbols-outlined" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">search</span>
-              <input type="text" placeholder="Rechercher par code ou nom..." [ngModel]="matiereSearch()" (ngModelChange)="matiereSearch.set($event)" class="input" style="padding-left:34px" />
-            </div>
-            <select [ngModel]="matiereClasseFilter()" (ngModelChange)="matiereClasseFilter.set($event)" class="input" style="max-width:200px">
-              <option value="">Toutes les classes</option>
-              @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
-            </select>
+          <div style="position:relative;margin-bottom:20px">
+            <span class="material-symbols-outlined" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">search</span>
+            <input type="text" placeholder="Rechercher par code ou nom..." [ngModel]="matiereSearch()" (ngModelChange)="matiereSearch.set($event)" class="input" style="padding-left:34px" />
           </div>
           @if (showMatiereForm()) {
             <div class="dialog-backdrop" (click)="cancelMatiereForm()">
@@ -234,6 +228,15 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
                 <div class="field"><label>Code</label><input type="text" placeholder="Code" [(ngModel)]="formData.matiere.code" class="input" /></div>
                 <div class="field"><label>Nom</label><input type="text" placeholder="Nom" [(ngModel)]="formData.matiere.nom" class="input" /></div>
                 <div class="field"><label>Coefficient</label><input type="number" placeholder="Coefficient" [(ngModel)]="formData.matiere.coefficient" class="input" /></div>
+                @if (!editingMatiere()) {
+                  <div class="field">
+                    <label>Assigner à une classe (optionnel)</label>
+                    <select [ngModel]="matiereAssignClasseId()" (ngModelChange)="matiereAssignClasseId.set($event)" class="input">
+                      <option value="">Ne pas assigner maintenant</option>
+                      @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
+                    </select>
+                  </div>
+                }
                 <div class="dialog-actions">
                   <button (click)="cancelMatiereForm()" class="btn btn-secondary">Annuler</button>
                   <button (click)="saveMatiere()" class="btn btn-primary">{{ editingMatiere() ? 'Modifier' : 'Créer' }}</button>
@@ -241,19 +244,28 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               </div>
             </div>
           }
-          <div style="overflow-x:auto">
-            <table class="table"><thead><tr><th>Code</th><th>Nom</th><th>Coefficient</th><th>Classes</th><th>Notes</th><th>Actions</th></tr></thead>
-            <tbody>
-              @for (m of pagedMatieres(); track m.id) {
-                <tr><td style="font-weight:600">{{ m.code }}</td><td>{{ m.nom }}</td><td>{{ m.coefficient }}</td><td>{{ m._count?.classeMatieres || 0 }}</td><td>{{ m._count?.notes || 0 }}</td>
-                  <td><div style="display:flex;gap:4px"><button (click)="editMatiere(m)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button><button (click)="confirmDeleteMatiere(m.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></div></td>
-                </tr>
-              } @empty {
-                <tr><td colspan="6" class="table-empty">Aucune matière trouvée</td></tr>
+          @for (groupe of matieresGroupees(); track groupe.filiere) {
+            <div style="margin-bottom:24px">
+              <h4 style="margin:0 0 10px;font-family:var(--font-heading);font-size:14px;color:var(--color-accent)">{{ groupe.filiere }}</h4>
+              @for (sousGroupe of groupe.classes; track sousGroupe.classe) {
+                <div style="margin-bottom:12px;padding-left:12px;border-left:2px solid var(--color-divider)">
+                  <div style="font-size:13px;font-weight:600;margin-bottom:6px">{{ sousGroupe.classe }}</div>
+                  <div class="table-scroll">
+                    <table class="table"><thead><tr><th>Code</th><th>Nom</th><th>Coefficient</th><th>Notes</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      @for (m of sousGroupe.matieres; track m.id) {
+                        <tr><td style="font-weight:600">{{ m.code }}</td><td>{{ m.nom }}</td><td>{{ m.coefficient }}</td><td>{{ m._count?.notes || 0 }}</td>
+                          <td><div style="display:flex;gap:4px"><button (click)="editMatiere(m)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button><button (click)="confirmDeleteMatiere(m.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></div></td>
+                        </tr>
+                      }
+                    </tbody></table>
+                  </div>
+                </div>
               }
-            </tbody></table>
-          </div>
-          <app-pagination [page]="matierePage()" [pageSize]="pageSize" [totalItems]="filteredMatieres().length" (pageChange)="matierePage.set($event)"></app-pagination>
+            </div>
+          } @empty {
+            <div class="table-empty">Aucune matière trouvée</div>
+          }
         </div></div>
       }
 
@@ -308,13 +320,14 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
             </select>
           </div>
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table"><thead><tr><th>Nom</th><th>Prénom</th><th>Email</th><th>Téléphone</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
               @for (e of pagedEnseignants(); track e.id) {
                 <tr><td>{{ e.nom }}</td><td>{{ e.prenom }}</td><td>{{ e.email }}</td><td>{{ e.telephone || '—' }}</td>
                   <td><span class="tag" [class]="e.statut==='ACTIF' ? 'tag-success' : 'tag-accent'">{{ e.statut }}</span></td>
                   <td><div style="display:flex;gap:4px">
+                    <button (click)="openEnseignantFiche(e.id)" class="btn btn-icon btn-secondary" title="Voir la fiche"><span class="material-symbols-outlined" style="font-size:18px">visibility</span></button>
                     <button (click)="toggleUserStatut(e)" class="btn btn-icon btn-secondary" title="{{ e.statut==='ACTIF' ? 'Désactiver' : 'Activer' }}"><span class="material-symbols-outlined" style="font-size:18px">{{ e.statut==='ACTIF' ? 'block' : 'check_circle' }}</span></button>
                     <button (click)="resetPassword(e.id)" class="btn btn-icon btn-secondary" title="Reset mot de passe"><span class="material-symbols-outlined" style="font-size:18px">key</span></button>
                     <button (click)="confirmDeleteUser(e.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button>
@@ -376,9 +389,13 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
                   <div class="field"><label>Sexe</label><select [(ngModel)]="formDataEtudiant.sexe" class="input"><option value="">Sexe</option><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
                   <div class="field"><label>Téléphone</label><input type="text" placeholder="Téléphone" [(ngModel)]="formDataEtudiant.telephone" class="input" /></div>
                   <div class="field"><label>Email</label><input type="email" placeholder="Email" [(ngModel)]="formDataEtudiant.email" class="input" /></div>
+                  <div class="field"><label>Lieu d'habitation</label><input type="text" placeholder="Lieu d'habitation" [(ngModel)]="formDataEtudiant.lieuHabitation" class="input" /></div>
                   <div class="field"><label>Contact parent</label><input type="text" placeholder="Contact parent" [(ngModel)]="formDataEtudiant.contactParentNom" class="input" /></div>
                   <div class="field"><label>Tél. parent</label><input type="text" placeholder="Tél. parent" [(ngModel)]="formDataEtudiant.contactParentTelephone" class="input" /></div>
                   <div class="field"><label>Matricule BAC</label><input type="text" placeholder="Matricule BAC" [(ngModel)]="formDataEtudiant.matriculeBac" class="input" /></div>
+                  <div class="field"><label>Matricule MESRS</label><input type="text" placeholder="Matricule MESRS" [(ngModel)]="formDataEtudiant.matriculeMesrs" class="input" /></div>
+                  <div class="field"><label>N° table BAC</label><input type="text" placeholder="N° table BAC" [(ngModel)]="formDataEtudiant.numeroTableBac" class="input" /></div>
+                  <div class="field"><label>Année BAC</label><input type="text" placeholder="Année BAC" [(ngModel)]="formDataEtudiant.anneeBac" class="input" /></div>
                 </div>
                 <div class="dialog-actions">
                   <button (click)="showEtudiantForm.set(false)" class="btn btn-secondary">Annuler</button>
@@ -403,7 +420,7 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               <option value="CANDIDAT">Candidat</option>
             </select>
           </div>
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table"><thead><tr><th>Nom</th><th>Prénom</th><th>Téléphone</th><th>Email</th><th>Classe</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
               @for (e of pagedEtudiants(); track e.id) {
@@ -411,6 +428,7 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
                   <td>{{ e.inscriptions?.[0]?.classe?.nom || '—' }}</td>
                   <td><span class="tag" [class]="e.statut==='ACTIF' ? 'tag-success' : 'tag-accent'">{{ e.statut }}</span></td>
                   <td><div style="display:flex;gap:4px">
+                    <button (click)="openEtudiantFiche(e.id)" class="btn btn-icon btn-secondary" title="Voir la fiche"><span class="material-symbols-outlined" style="font-size:18px">visibility</span></button>
                     <button (click)="openInscriptionForm(e)" class="btn btn-icon btn-secondary" title="Inscrire dans une classe"><span class="material-symbols-outlined" style="font-size:18px">school</span></button>
                   </div></td>
                 </tr>
@@ -469,7 +487,7 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
               </div>
             </div>
           }
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table"><thead><tr><th>Libellé</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead>
             <tbody>
               @for (a of annees(); track a.id) {
@@ -484,32 +502,71 @@ import { filiereLabel, filiereIds } from '../../core/utils/filiere.util';
         </div></div>
       }
 
-      @if (activeTab()==='audit') {
-        <div class="gs-panel">
-          <div class="gs-panel-head"><h3 style="margin:0">Journal d'audit</h3></div>
-          <div class="gs-panel-body">
-            <div style="overflow-x:auto">
-              <table class="table"><thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Table</th><th>ID</th></tr></thead>
+      @if (activeTab()==='notes') {
+        <div class="gs-panel"><div class="gs-panel-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+            <h3 style="margin:0">Notes &amp; moyennes par classe</h3>
+            <div class="field" style="margin:0;max-width:260px">
+              <label>Période (pour voir un classement)</label>
+              <select [ngModel]="classementPeriodeId()" (ngModelChange)="classementPeriodeId.set($event)" class="input">
+                <option value="">Sélectionner...</option>
+                @for (p of periodesClassement(); track p.id) { <option [value]="p.id">{{ p.libelle }}</option> }
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>Classe</th><th>Filière</th><th>Niveau</th><th style="text-align:center">Effectif</th><th style="text-align:center">Notes saisies</th><th style="text-align:center">Moyenne de classe</th><th style="text-align:center">Bulletins générés</th><th></th></tr></thead>
               <tbody>
-                @for (a of audit().data || []; track a.id) {
-                  <tr><td>{{ a.date | date:'dd/MM/yyyy HH:mm' }}</td><td>{{ a.utilisateur?.nom }} {{ a.utilisateur?.prenom }}</td>
-                    <td><span class="tag tag-neutral">{{ a.action }}</span></td><td>{{ a.tableName }}</td><td class="text-muted" style="font-size:12px">{{ a.recordId }}</td>
+                @for (c of suiviScolarite(); track c.classe) {
+                  <tr>
+                    <td style="font-weight:600">{{ c.classe }}</td>
+                    <td>{{ c.filiere }}</td>
+                    <td>{{ c.niveau }}</td>
+                    <td style="text-align:center">{{ c.effectif }}</td>
+                    <td style="text-align:center">{{ c.notesSaisies }}</td>
+                    <td style="text-align:center;font-weight:600">{{ c.moyenneClasse !== null ? c.moyenneClasse.toFixed(2) + '/20' : '—' }}</td>
+                    <td style="text-align:center">{{ c.bulletinsGeneres }}</td>
+                    <td>
+                      @if (classementPeriodeId()) {
+                        <button (click)="voirClassement(c.classeId)" class="btn btn-icon btn-secondary" title="Voir le classement"><span class="material-symbols-outlined" style="font-size:18px">leaderboard</span></button>
+                      }
+                    </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="5" class="table-empty">Aucune entrée dans le journal</td></tr>
+                  <tr><td colspan="8" class="table-empty">Aucune donnée disponible</td></tr>
                 }
-              </tbody></table>
-            </div>
-            @if (audit().totalPages > 1) {
-              <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding-top:16px;margin-top:16px;border-top:1px solid var(--color-divider)">
-                <button [disabled]="auditPage()<=1" (click)="changeAuditPage(auditPage()-1)" class="btn btn-secondary btn-sm">Précédent</button>
-                <span style="font-size:13px">Page {{ auditPage() }} / {{ audit().totalPages }}</span>
-                <button [disabled]="auditPage()>=audit().totalPages" (click)="changeAuditPage(auditPage()+1)" class="btn btn-secondary btn-sm">Suivant</button>
-              </div>
-            }
+              </tbody>
+            </table>
           </div>
-        </div>
+        </div></div>
       }
+
+      @if (activeTab()==='relances') {
+        <div class="gs-panel"><div class="gs-panel-body">
+          <h3 style="margin:0 0 20px">Historique des relances de scolarité</h3>
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>Étudiant</th><th>Téléphone</th><th>Message</th><th>Date d'envoi</th><th>Statut</th></tr></thead>
+              <tbody>
+                @for (r of relances(); track r.id) {
+                  <tr>
+                    <td style="font-weight:600">{{ r.etudiant?.nom }} {{ r.etudiant?.prenom }}</td>
+                    <td>{{ r.etudiant?.telephone || '—' }}</td>
+                    <td style="max-width:320px;white-space:normal">{{ r.message }}</td>
+                    <td>{{ r.dateEnvoi | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td><span class="tag" [class]="r.aPayeDepuis ? 'tag-success' : 'tag-neutral'">{{ r.aPayeDepuis ? 'A payé depuis' : 'Sans suite' }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="table-empty">Aucune relance envoyée</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-pagination [page]="relancePage()" [pageSize]="pageSize" [totalItems]="relanceTotal()" (pageChange)="onRelancePageChange($event)"></app-pagination>
+        </div></div>
+      }
+
     </div>
   `,
 })
@@ -613,20 +670,54 @@ export class DsiHomeComponent implements OnInit {
   });
   matieres = signal<any[]>([]);
   matiereSearch = signal('');
-  matiereClasseFilter = signal('');
+  matiereAssignClasseId = signal('');
   filteredMatieres = computed(() => {
     let list = this.matieres();
     const s = this.matiereSearch().trim().toLowerCase();
     if (s) {
       list = list.filter(m => m.code?.toLowerCase().includes(s) || m.nom?.toLowerCase().includes(s));
     }
-    const cf = this.matiereClasseFilter();
-    if (cf) {
-      list = list.filter(m => m.classeMatieres?.some((cm: any) => cm.classeId === cf));
-    }
     return list;
   });
   pagedMatieres = computed(() => this.paginate(this.filteredMatieres(), this.matierePage()));
+
+  // Regroupe les matières filtrées par filière puis par classe — une même
+  // matière apparaît dans plusieurs groupes si elle est enseignée dans
+  // plusieurs classes/filières (classeMatieres est la source, pas de doublon
+  // de données, juste une vue éclatée).
+  matieresGroupees = computed(() => {
+    const groupes = new Map<string, Map<string, any[]>>();
+    const addTo = (filiereNom: string, classeNom: string, matiere: any) => {
+      if (!groupes.has(filiereNom)) groupes.set(filiereNom, new Map());
+      const parClasse = groupes.get(filiereNom)!;
+      if (!parClasse.has(classeNom)) parClasse.set(classeNom, []);
+      parClasse.get(classeNom)!.push(matiere);
+    };
+
+    for (const m of this.filteredMatieres()) {
+      const classeMatieres = m.classeMatieres || [];
+      if (classeMatieres.length === 0) {
+        addTo('Non affectée', '—', m);
+        continue;
+      }
+      for (const cm of classeMatieres) {
+        const classeNom = cm.classe?.nom || 'Sans classe';
+        const filieres = cm.classe?.filieres || [];
+        if (filieres.length === 0) {
+          addTo('Sans filière', classeNom, m);
+        } else {
+          for (const cf of filieres) {
+            addTo(cf.filiere?.nom || 'Sans filière', classeNom, m);
+          }
+        }
+      }
+    }
+
+    return Array.from(groupes.entries()).map(([filiere, parClasse]) => ({
+      filiere,
+      classes: Array.from(parClasse.entries()).map(([classe, matieres]) => ({ classe, matieres })),
+    }));
+  });
   annees = signal<any[]>([]);
   enseignants = signal<any[]>([]);
   enseignantSearch = signal('');
@@ -671,7 +762,6 @@ export class DsiHomeComponent implements OnInit {
     return list;
   });
   pagedEtudiants = computed(() => this.paginate(this.filteredEtudiants(), this.etudiantPage()));
-  audit = signal<any>({ data: [], total: 0, totalPages: 0 });
   credentials = signal<{ label: string; email: string; password: string } | null>(null);
 
   showFiliereForm = signal(false);
@@ -691,10 +781,9 @@ export class DsiHomeComponent implements OnInit {
     matiere: { code: '', nom: '', coefficient: 1 },
     enseignant: { nom: '', prenom: '', email: '', telephone: '' },
   };
-  formDataEtudiant = { nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: '', telephone: '', email: '', contactParentNom: '', contactParentTelephone: '', matriculeBac: '' };
+  formDataEtudiant = { nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: '', telephone: '', email: '', lieuHabitation: '', contactParentNom: '', contactParentTelephone: '', matriculeBac: '', matriculeMesrs: '', numeroTableBac: '', anneeBac: '' };
 
   newAnnee: any = { libelle: '', dateDebut: '', dateFin: '', statut: 'preparation' };
-  auditPage = signal(1);
 
   showInscriptionForm = signal(false);
   inscriptionTarget = signal<any>(null);
@@ -709,7 +798,44 @@ export class DsiHomeComponent implements OnInit {
 
   loadAll() {
     this.loadEcole(); this.loadFilieres(); this.loadClasses(); this.loadMatieres();
-    this.loadAnnees(); this.loadEnseignants(); this.loadEtudiants(); this.loadAudit();
+    this.loadAnnees(); this.loadEnseignants(); this.loadEtudiants(); this.loadSuiviScolarite();
+    this.loadRelances(); this.loadPeriodesClassement();
+  }
+
+  suiviScolarite = signal<any[]>([]);
+  loadSuiviScolarite() {
+    this.http.get<any>(`${environment.apiUrl}/etudes/suivi-scolarite`).subscribe({
+      next: (d) => this.suiviScolarite.set(d.classes || []),
+      error: () => this.suiviScolarite.set([]),
+    });
+  }
+
+  periodesClassement = signal<any[]>([]);
+  classementPeriodeId = signal('');
+  loadPeriodesClassement() {
+    this.http.get<any[]>(`${environment.apiUrl}/etudes/periodes`).subscribe({
+      next: (d) => this.periodesClassement.set(d || []),
+      error: () => this.periodesClassement.set([]),
+    });
+  }
+
+  voirClassement(classeId: string) {
+    if (!this.classementPeriodeId()) return;
+    this.router.navigate(['/classement', classeId, this.classementPeriodeId()]);
+  }
+
+  relances = signal<any[]>([]);
+  relancePage = signal(1);
+  relanceTotal = signal(0);
+  loadRelances() {
+    this.http.get<any>(`${environment.apiUrl}/daf/relances?page=${this.relancePage()}&limit=${this.pageSize}`).subscribe({
+      next: (d) => { this.relances.set(d.data || []); this.relanceTotal.set(d.total || 0); },
+      error: () => { this.relances.set([]); this.relanceTotal.set(0); },
+    });
+  }
+  onRelancePageChange(page: number) {
+    this.relancePage.set(page);
+    this.loadRelances();
   }
 
   loadEcole() { this.http.get<any>(`${environment.apiUrl}/dsi/ecole`).subscribe({ next: (d) => this.ecole = d, error: () => {} }); }
@@ -748,9 +874,11 @@ export class DsiHomeComponent implements OnInit {
   }
   deleteClasse(id: string) { this.http.delete(`${environment.apiUrl}/dsi/classes/${id}`).subscribe({ next: () => this.loadClasses(), error: (e) => this.alertService.error('Erreur: ' + (e.error?.message || 'échec')) }); }
   goToClasseDetails(classeId: string) { this.router.navigate(['/dsi/classes', classeId]); }
+  openEnseignantFiche(enseignantId: string) { this.router.navigate(['/dsi/enseignants', enseignantId]); }
+  openEtudiantFiche(etudiantId: string) { this.router.navigate(['/dsi/etudiants', etudiantId]); }
 
   loadMatieres() { this.http.get<any[]>(`${environment.apiUrl}/dsi/matieres`).subscribe({ next: (d) => this.matieres.set(d), error: () => this.matieres.set([]) }); }
-  openMatiereForm() { this.editingMatiere.set(null); this.formData.matiere = { code: '', nom: '', coefficient: 1 }; this.showMatiereForm.set(true); }
+  openMatiereForm() { this.editingMatiere.set(null); this.formData.matiere = { code: '', nom: '', coefficient: 1 }; this.matiereAssignClasseId.set(''); this.showMatiereForm.set(true); }
   editMatiere(m: any) { this.editingMatiere.set(m.id); this.formData.matiere = { code: m.code, nom: m.nom, coefficient: m.coefficient }; this.showMatiereForm.set(true); }
   cancelMatiereForm() { this.showMatiereForm.set(false); this.editingMatiere.set(null); }
   saveMatiere() {
@@ -760,8 +888,8 @@ export class DsiHomeComponent implements OnInit {
     } else {
       this.http.post<any>(`${environment.apiUrl}/dsi/matieres`, this.formData.matiere).subscribe({
         next: (created) => {
-          if (this.matiereClasseFilter()) {
-            this.http.post(`${environment.apiUrl}/dsi/classes/${this.matiereClasseFilter()}/matieres`, { matiereId: created.id, coefficient: +this.formData.matiere.coefficient }).subscribe({
+          if (this.matiereAssignClasseId()) {
+            this.http.post(`${environment.apiUrl}/dsi/classes/${this.matiereAssignClasseId()}/matieres`, { matiereId: created.id, coefficient: +this.formData.matiere.coefficient }).subscribe({
               next: () => { this.loadMatieres(); this.cancelMatiereForm(); },
               error: (e) => { this.loadMatieres(); this.cancelMatiereForm(); this.alertService.error('Matière créée mais affectation échouée: ' + (e.error?.message || 'échec')); },
             });
@@ -843,13 +971,11 @@ export class DsiHomeComponent implements OnInit {
       error: (e) => this.alertService.error('Erreur: ' + (e.error?.message || 'échec')),
     });
   }
-  openEtudiantForm() { this.formDataEtudiant = { nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: '', telephone: '', email: '', contactParentNom: '', contactParentTelephone: '', matriculeBac: '' }; this.showEtudiantForm.set(true); }
+  openEtudiantForm() { this.formDataEtudiant = { nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: '', telephone: '', email: '', lieuHabitation: '', contactParentNom: '', contactParentTelephone: '', matriculeBac: '', matriculeMesrs: '', numeroTableBac: '', anneeBac: '' }; this.showEtudiantForm.set(true); }
   createEtudiant() {
     const d = this.formDataEtudiant;
     if (!d.nom || !d.prenom) { this.alertService.error('Nom et prénom requis'); return; }
     this.http.post(`${environment.apiUrl}/etudiants`, d).subscribe({ next: () => { this.loadEtudiants(); this.showEtudiantForm.set(false); }, error: (e) => this.alertService.error('Erreur: ' + (e.error?.message || 'échec')) });
   }
 
-  loadAudit() { this.http.get<any>(`${environment.apiUrl}/dsi/audit?page=${this.auditPage()}&limit=50`).subscribe({ next: (d) => this.audit.set(d), error: () => this.audit.set({ data: [], total: 0, totalPages: 0 }) }); }
-  changeAuditPage(page: number) { this.auditPage.set(page); this.loadAudit(); }
 }

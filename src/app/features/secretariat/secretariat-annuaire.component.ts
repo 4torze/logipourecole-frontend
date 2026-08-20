@@ -15,7 +15,7 @@ import { environment } from '../../../environments/environment';
           <h3 style="margin:0;font-size:16px">Annuaire du personnel ({{ filteredAnnuaire().length }})</h3>
           <input type="text" [(ngModel)]="search" placeholder="Rechercher par nom..." class="input" style="min-width:240px;width:auto" />
         </div>
-        <div class="gs-panel-body" style="overflow-x:auto">
+        <div class="gs-panel-body table-scroll">
           <table class="table">
             <thead>
               <tr><th>Nom</th><th>Rôle</th><th>Email</th><th>Téléphone</th><th>Statut</th></tr>

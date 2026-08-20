@@ -42,9 +42,29 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
         </div>
       }
 
+      @if (showEdit()) {
+        <div class="dialog-backdrop" (click)="showEdit.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Modifier la salle</span>
+              <button class="btn btn-icon btn-secondary" (click)="showEdit.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            </div>
+            <div class="field"><label>Nom</label><input type="text" [(ngModel)]="editSalle.nom" placeholder="Ex: Salle A12" class="input" /></div>
+            <div class="field"><label>Code</label><input type="text" [(ngModel)]="editSalle.code" placeholder="Ex: A12" class="input" /></div>
+            <div class="field"><label>Capacité</label><input type="number" [(ngModel)]="editSalle.capacite" min="1" placeholder="Capacité" class="input" /></div>
+            <div class="field"><label>Bâtiment</label><input type="text" [(ngModel)]="editSalle.batiment" placeholder="Bâtiment" class="input" /></div>
+            <div class="field"><label>Étage</label><input type="text" [(ngModel)]="editSalle.etage" placeholder="Étage" class="input" /></div>
+            <div class="dialog-actions">
+              <button (click)="showEdit.set(false)" class="btn btn-secondary">Annuler</button>
+              <button (click)="saveEdit()" [disabled]="editSaving()" class="btn btn-primary">@if (editSaving()) { <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">save</span> } Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <div class="gs-panel">
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Nom</th><th>Code</th><th>Capacité</th><th>Bâtiment</th><th>Étage</th><th>Statut</th><th>Actions</th></tr>
@@ -58,7 +78,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
                     <td>{{ s.batiment || '—' }}</td>
                     <td>{{ s.etage || '—' }}</td>
                     <td><span class="tag" [class]="s.actif ? 'tag-success' : 'tag-danger'">{{ s.actif ? 'Active' : 'Inactive' }}</span></td>
-                    <td><div style="display:flex;gap:4px"><button (click)="toggle(s)" class="btn btn-icon btn-secondary" title="Activer/Inactiver"><span class="material-symbols-outlined" style="font-size:18px">swap_horiz</span></button><button (click)="remove(s.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></div></td>
+                    <td><div style="display:flex;gap:4px"><button (click)="openEdit(s)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button><button (click)="toggle(s)" class="btn btn-icon btn-secondary" title="Activer/Inactiver"><span class="material-symbols-outlined" style="font-size:18px">swap_horiz</span></button><button (click)="remove(s.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></div></td>
                   </tr>
                 } @empty {
                   <tr><td colspan="7" class="table-empty">Aucune salle enregistrée</td></tr>
@@ -85,8 +105,11 @@ export class SallesComponent implements OnInit {
   });
   saving = signal(false);
   showForm = signal(false);
+  showEdit = signal(false);
+  editSaving = signal(false);
 
   newSalle: any = { nom: '', code: '', capacite: 50, batiment: '', etage: '' };
+  editSalle: any = { id: '', nom: '', code: '', capacite: 50, batiment: '', etage: '' };
 
   ngOnInit() { this.load(); }
 
@@ -108,6 +131,25 @@ export class SallesComponent implements OnInit {
         this.load();
       },
       error: (err: any) => { this.saving.set(false); this.alertService.error(err?.error?.message || 'Erreur création'); },
+    });
+  }
+
+  openEdit(s: Salle) {
+    this.editSalle = { id: s.id, nom: s.nom, code: s.code || '', capacite: s.capacite, batiment: s.batiment || '', etage: s.etage || '' };
+    this.showEdit.set(true);
+  }
+
+  saveEdit() {
+    this.editSaving.set(true);
+    const { id, ...dto } = this.editSalle;
+    this.service.update(id, dto).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.showEdit.set(false);
+        this.alertService.success('Salle modifiée');
+        this.load();
+      },
+      error: (err: any) => { this.editSaving.set(false); this.alertService.error(err?.error?.message || 'Erreur lors de la modification'); },
     });
   }
 

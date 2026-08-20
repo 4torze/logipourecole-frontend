@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent } from '../../shared/components/pagination.component';
@@ -15,9 +16,14 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
       <div class="gs-panel">
         <div class="gs-panel-head">
           <h3 style="margin:0;font-size:18px">Tableau financier</h3>
-          <button class="btn btn-secondary" (click)="relanceGroupee()" [disabled]="relanceLoading()">
-            <span class="material-symbols-outlined" style="font-size:18px">sms</span> Relance SMS groupée
-          </button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" (click)="exportPdf()">
+              <span class="material-symbols-outlined" style="font-size:18px">picture_as_pdf</span> Exporter PDF
+            </button>
+            <button class="btn btn-secondary" (click)="openRelanceDialog(null)" [disabled]="relanceLoading()">
+              <span class="material-symbols-outlined" style="font-size:18px">sms</span> Relance SMS groupée
+            </button>
+          </div>
         </div>
         <div class="gs-panel-body">
           <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
@@ -41,17 +47,29 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
             <input type="text" [(ngModel)]="filters.search" (ngModelChange)="onSearchChange($event)" placeholder="Rechercher par nom ou téléphone..." class="input" style="flex:2;min-width:220px" />
           </div>
 
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr>
-                  <th>Étudiant</th>
-                  <th>Classe</th>
-                  <th style="text-align:right">Montant total</th>
-                  <th style="text-align:right">Payé</th>
-                  <th style="text-align:right">Reste</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
+                  <th rowspan="2">Étudiant</th>
+                  <th rowspan="2">Classe</th>
+                  <th rowspan="2">Filière</th>
+                  <th rowspan="2">Niveau</th>
+                  <th rowspan="2">Contact</th>
+                  <th rowspan="2">Contact parent</th>
+                  <th rowspan="2" style="text-align:right">Montant total</th>
+                  <th colspan="3" style="text-align:center">1er versement</th>
+                  <th colspan="3" style="text-align:center">2e versement</th>
+                  <th colspan="3" style="text-align:center">3e versement</th>
+                  <th rowspan="2" style="text-align:right">Payé</th>
+                  <th rowspan="2" style="text-align:right">Reste</th>
+                  <th rowspan="2">Statut</th>
+                  <th rowspan="2">Actions</th>
+                </tr>
+                <tr>
+                  <th style="text-align:right">Date</th><th>N° Reçu</th><th style="text-align:right">Montant</th>
+                  <th style="text-align:right">Date</th><th>N° Reçu</th><th style="text-align:right">Montant</th>
+                  <th style="text-align:right">Date</th><th>N° Reçu</th><th style="text-align:right">Montant</th>
                 </tr>
               </thead>
               <tbody>
@@ -59,7 +77,16 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
                   <tr>
                     <td style="font-weight:600">{{ row.nom }} {{ row.prenom }}</td>
                     <td style="color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ row.classeNom || row.niveau || '-' }}</td>
+                    <td>{{ row.filiere || '—' }}</td>
+                    <td>{{ row.niveau || '—' }}</td>
+                    <td>{{ row.contact || '—' }}</td>
+                    <td>{{ row.contactParent || '—' }}</td>
                     <td style="text-align:right">{{ row.montantTotal?.toLocaleString('fr-FR') }}</td>
+                    @for (v of [row.versement1, row.versement2, row.versement3]; track $index) {
+                      <td style="font-size:12px">{{ v?.date ? (v.date | date:'dd/MM/yyyy') : '—' }}</td>
+                      <td style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ v?.recu || '—' }}</td>
+                      <td style="text-align:right">{{ v?.montant ? v.montant.toLocaleString('fr-FR') : '—' }}</td>
+                    }
                     <td style="text-align:right;font-weight:600;color:#1a7a3f">{{ row.totalPaye?.toLocaleString('fr-FR') }}</td>
                     <td style="text-align:right;font-weight:600;color:var(--color-accent-700)">{{ row.reste?.toLocaleString('fr-FR') }}</td>
                     <td><span class="tag" [class]="row.statut === 'À jour' ? 'tag-success' : 'tag-danger'">{{ row.statut }}</span></td>
@@ -67,13 +94,13 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
                       <div style="display:flex;gap:4px">
                         <button class="btn btn-icon btn-secondary" (click)="openPaiementsDrawer(row)" title="Voir les paiements"><span class="material-symbols-outlined" style="font-size:18px">visibility</span></button>
                         @if (row.statut !== 'À jour') {
-                          <button class="btn btn-icon btn-secondary" (click)="relanceEtudiant(row.etudiantId)" [disabled]="relanceId() === row.etudiantId" title="Relance SMS"><span class="material-symbols-outlined" style="font-size:18px">notifications_active</span></button>
+                          <button class="btn btn-icon btn-secondary" (click)="openRelanceDialog(row.etudiantId)" [disabled]="relanceId() === row.etudiantId" title="Relance SMS"><span class="material-symbols-outlined" style="font-size:18px">notifications_active</span></button>
                         }
                       </div>
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="7" style="text-align:center;padding:32px 0;color:color-mix(in srgb, var(--color-text) 50%, transparent)">@if (tableLoading()) { Chargement... } @else { Aucun étudiant trouvé. Vérifiez qu'une année scolaire est active et qu'il y a des inscriptions. }</td></tr>
+                  <tr><td colspan="17" style="text-align:center;padding:32px 0;color:color-mix(in srgb, var(--color-text) 50%, transparent)">@if (tableLoading()) { Chargement... } @else { Aucun étudiant trouvé. Vérifiez qu'une année scolaire est active et qu'il y a des inscriptions. }</td></tr>
                 }
               </tbody>
             </table>
@@ -81,7 +108,51 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
           <app-pagination [page]="tablePage()" [pageSize]="tablePageSize" [totalItems]="tableTotal()" (pageChange)="onTablePageChange($event)"></app-pagination>
         </div>
       </div>
+
+      <div class="gs-panel" style="margin-top:20px">
+        <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Historique des relances</h3></div>
+        <div class="gs-panel-body">
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>Étudiant</th><th>Téléphone</th><th>Message</th><th>Date d'envoi</th><th>Statut</th></tr></thead>
+              <tbody>
+                @for (r of relances(); track r.id) {
+                  <tr>
+                    <td style="font-weight:600">{{ r.etudiant?.nom }} {{ r.etudiant?.prenom }}</td>
+                    <td>{{ r.etudiant?.telephone || '—' }}</td>
+                    <td style="max-width:320px;white-space:normal">{{ r.message }}</td>
+                    <td>{{ r.dateEnvoi | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td><span class="tag" [class]="r.aPayeDepuis ? 'tag-success' : 'tag-neutral'">{{ r.aPayeDepuis ? 'A payé depuis' : 'Sans suite' }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="table-empty">Aucune relance envoyée</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-pagination [page]="relancePage()" [pageSize]="relancePageSize" [totalItems]="relanceTotal()" (pageChange)="onRelancePageChange($event)"></app-pagination>
+        </div>
+      </div>
     </div>
+
+    @if (relanceDialogOpen()) {
+      <div class="dialog-backdrop" (click)="relanceDialogOpen.set(false)">
+        <div class="dialog" style="width:min(480px, 100%)" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="dialog-title">{{ relanceEtudiantId() ? 'Relance SMS' : 'Relance SMS groupée' }}</span>
+            <button class="btn btn-icon btn-secondary" (click)="relanceDialogOpen.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <div class="field">
+            <label>Message (optionnel — laisser vide pour le message par défaut personnalisé)</label>
+            <textarea [(ngModel)]="relanceMessage" class="input" rows="4" placeholder="Message personnalisé..."></textarea>
+          </div>
+          <div class="dialog-actions">
+            <button (click)="relanceDialogOpen.set(false)" class="btn btn-secondary">Annuler</button>
+            <button (click)="confirmRelance()" [disabled]="relanceLoading() || relanceId() !== null" class="btn btn-primary">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (drawerVisible()) {
       <div class="dialog-backdrop" style="justify-content:flex-end;align-items:stretch;padding:0" (click)="drawerVisible.set(false)">
@@ -97,17 +168,17 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
                 <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Payé</span><span style="font-size:17px;font-weight:700;color:#1a7a3f">{{ selectedRow().totalPaye?.toLocaleString('fr-FR') }} FCFA</span></div>
                 <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Reste</span><span style="font-size:17px;font-weight:700;color:var(--color-accent-700)">{{ selectedRow().reste?.toLocaleString('fr-FR') }} FCFA</span></div>
               </div>
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table">
                   <thead><tr><th>N° Reçu</th><th>Versement</th><th>Date</th><th style="text-align:right">Montant</th><th>Reçu</th></tr></thead>
                   <tbody>
                     @for (p of selectedRow().versements || []; track p.id) {
-                      <tr>
-                        <td style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ p.recu || p.numeroRecu || '-' }}</td>
+                      <tr style="cursor:pointer" (click)="router.navigate(['/daf/paiements', p.id])" [style.opacity]="p.annule ? 0.55 : 1">
+                        <td style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ p.recu || p.numeroRecu || '-' }} @if (p.annule) { <span class="tag tag-danger" style="margin-left:4px">Annulé</span> }</td>
                         <td>V{{ p.versement }}</td>
                         <td style="font-size:12px">{{ p.date | date:'dd/MM/yyyy' }}</td>
                         <td style="text-align:right;font-weight:600">{{ p.montant?.toLocaleString('fr-FR') }} FCFA</td>
-                        <td><button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" (click)="downloadRecu(p)" title="Télécharger le reçu"><span class="material-symbols-outlined" style="font-size:16px">download</span></button></td>
+                        <td><button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" (click)="$event.stopPropagation(); downloadRecu(p)" title="Télécharger le reçu"><span class="material-symbols-outlined" style="font-size:16px">download</span></button></td>
                       </tr>
                     } @empty {
                       <tr><td colspan="5" style="text-align:center;padding:24px 0;color:color-mix(in srgb, var(--color-text) 50%, transparent)">Aucun paiement enregistré pour cet étudiant.</td></tr>
@@ -125,6 +196,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
 export class DafFinanceComponent implements OnInit {
   private http = inject(HttpClient);
   private alertService = inject(AlertService);
+  router = inject(Router);
 
   tableauFinancier = signal<any[]>([]);
   tableLoading = signal(false);
@@ -152,6 +224,22 @@ export class DafFinanceComponent implements OnInit {
     this.loadClasses();
     this.loadAnnees();
     this.loadVersements();
+    this.loadRelances();
+  }
+
+  relances = signal<any[]>([]);
+  relancePage = signal(1);
+  relanceTotal = signal(0);
+  relancePageSize = 20;
+  loadRelances() {
+    this.http.get<any>(`${environment.apiUrl}/daf/relances?page=${this.relancePage()}&limit=${this.relancePageSize}`).subscribe({
+      next: (d) => { this.relances.set(d.data || []); this.relanceTotal.set(d.total || 0); },
+      error: () => { this.relances.set([]); this.relanceTotal.set(0); },
+    });
+  }
+  onRelancePageChange(page: number) {
+    this.relancePage.set(page);
+    this.loadRelances();
   }
 
   loadVersements() {
@@ -232,19 +320,50 @@ export class DafFinanceComponent implements OnInit {
     });
   }
 
-  relanceEtudiant(etudiantId: string) {
+  relanceDialogOpen = signal(false);
+  relanceEtudiantId = signal<string | null>(null);
+  relanceMessage = '';
+
+  openRelanceDialog(etudiantId: string | null) {
+    this.relanceEtudiantId.set(etudiantId);
+    this.relanceMessage = '';
+    this.relanceDialogOpen.set(true);
+  }
+
+  confirmRelance() {
+    const etudiantId = this.relanceEtudiantId();
+    this.relanceDialogOpen.set(false);
+    if (etudiantId) this.relanceEtudiant(etudiantId, this.relanceMessage);
+    else this.relanceGroupee(this.relanceMessage);
+  }
+
+  relanceEtudiant(etudiantId: string, message?: string) {
     this.relanceId.set(etudiantId);
-    this.http.post<any>(`${environment.apiUrl}/daf/relance-sms`, { etudiantId }).subscribe({
-      next: (res) => { this.relanceId.set(null); this.alertService.success(res.message || 'Relance envoyée'); },
+    this.http.post<any>(`${environment.apiUrl}/daf/relance-sms`, { etudiantId, message: message || undefined }).subscribe({
+      next: (res) => { this.relanceId.set(null); this.alertService.success(res.message || 'Relance envoyée'); this.loadRelances(); },
       error: (err) => { this.relanceId.set(null); this.alertService.error(err.error?.message || 'Erreur relance'); },
     });
   }
 
-  relanceGroupee() {
+  relanceGroupee(message?: string) {
     this.relanceLoading.set(true);
-    this.http.post<any>(`${environment.apiUrl}/daf/relance-groupee`, {}).subscribe({
-      next: (res) => { this.relanceLoading.set(false); this.alertService.success(res.message || 'Relances envoyées'); },
+    this.http.post<any>(`${environment.apiUrl}/daf/relance-groupee`, { message: message || undefined }).subscribe({
+      next: (res) => { this.relanceLoading.set(false); this.alertService.success(res.message || 'Relances envoyées'); this.loadRelances(); },
       error: (err) => { this.relanceLoading.set(false); this.alertService.error(err.error?.message || 'Erreur relance groupée'); },
+    });
+  }
+
+  exportPdf() {
+    this.http.get(`${environment.apiUrl}/exports/tableau-financier/pdf`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tableau-financier.pdf';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.alertService.error('Erreur lors de l\'export PDF'),
     });
   }
 }

@@ -140,7 +140,7 @@ import { environment } from '../../../environments/environment';
             <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
               <button class="btn btn-primary btn-block" (click)="goTo('/dg/finance')">Tableau financier</button>
               <button class="btn btn-secondary btn-block" (click)="goTo('/dg/utilisateurs')">Gérer les utilisateurs</button>
-              <button class="btn btn-secondary btn-block" (click)="goTo('/daf/recus')">Templates de reçus</button>
+              <button class="btn btn-secondary btn-block" (click)="goTo('/templates')">Template système</button>
               <div class="hr"></div>
               <button class="btn btn-secondary btn-block" (click)="exportData('etudiants/csv')">Exporter étudiants (CSV)</button>
               <button class="btn btn-secondary btn-block" (click)="exportData('tableau-financier/pdf')">Exporter tableau financier (PDF)</button>

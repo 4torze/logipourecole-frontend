@@ -2,9 +2,11 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent } from '../../shared/components/pagination.component';
+import { AnneeScolaireService } from '../../core/services/annee-scolaire.service';
 
 @Component({
   selector: 'app-dg-eleves',
@@ -46,23 +48,28 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
               <span class="material-symbols-outlined" style="font-size:18px">progress_activity</span> Chargement...
             </div>
           } @else {
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
-                  <tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Téléphone</th><th>Statut</th><th>Actions</th></tr>
+                  <tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Téléphone</th><th>Statut</th><th>Année en cours</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   @for (e of pagedEleves(); track e.id) {
                     <tr style="cursor:pointer" (click)="openFiche(e)">
                       <td>{{ e.nom }}</td>
                       <td>{{ e.prenom }}</td>
-                      <td>{{ classeOf(e) || '—' }}</td>
+                      <td>
+                        @if (classeIdOf(e)) {
+                          <a (click)="$event.stopPropagation(); openClasse(classeIdOf(e))" style="color:var(--color-accent);cursor:pointer;text-decoration:underline">{{ classeOf(e) }}</a>
+                        } @else { — }
+                      </td>
                       <td>{{ e.telephone || '—' }}</td>
                       <td><span class="tag" [class]="e.statut === 'ACTIF' ? 'tag-success' : 'tag-accent'">{{ e.statut }}</span></td>
+                      <td><span class="tag" [class]="estInscritAnneeActive(e) ? 'tag-success' : 'tag-neutral'">{{ estInscritAnneeActive(e) ? 'Inscrit' : 'Non inscrit' }}</span></td>
                       <td><button (click)="openFiche(e); $event.stopPropagation()" class="btn btn-secondary"><span class="material-symbols-outlined" style="font-size:18px">visibility</span>Voir la fiche</button></td>
                     </tr>
                   } @empty {
-                    <tr><td colspan="6" style="text-align:center;color:color-mix(in srgb, var(--color-text) 45%, transparent);padding:32px 0">Aucun élève trouvé</td></tr>
+                    <tr><td colspan="7" style="text-align:center;color:color-mix(in srgb, var(--color-text) 45%, transparent);padding:32px 0">Aucun élève trouvé</td></tr>
                   }
                 </tbody>
               </table>
@@ -71,97 +78,16 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
           }
         </div>
       </div>
-
-      @if (fiche(); as f) {
-        <div class="dialog-backdrop" style="display:flex;justify-content:flex-end;padding:0" (click)="fiche.set(null)">
-          <div style="width:100%;max-width:680px;height:100%;overflow-y:auto;background:var(--color-surface);border-left:1px solid var(--color-divider)" (click)="$event.stopPropagation()">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:2px solid var(--color-divider);position:sticky;top:0;background:var(--color-surface);z-index:1">
-              <div>
-                <h3 style="margin:0">{{ f.etudiant.prenom }} {{ f.etudiant.nom }}</h3>
-                <p style="margin:4px 0 0;font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ f.etudiant.email || 'Pas d\\'email' }} · {{ f.etudiant.telephone || 'Pas de téléphone' }}</p>
-              </div>
-              <button class="btn btn-icon btn-secondary" (click)="fiche.set(null)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
-            </div>
-
-            <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
-              <!-- Scolarité -->
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-                <div class="gs-stat"><span class="gs-stat-label">Montant total</span><span class="gs-stat-num">{{ f.scolarite.montantTotal | number:'1.0-0':'fr-FR' }}</span></div>
-                <div class="gs-stat"><span class="gs-stat-label">Payé</span><span class="gs-stat-num" style="color:#1a7a3f">{{ f.scolarite.totalPaye | number:'1.0-0':'fr-FR' }}</span></div>
-                <div class="gs-stat"><span class="gs-stat-label">Reste à payer</span><span class="gs-stat-num" style="color:var(--color-accent-700)">{{ f.scolarite.reste | number:'1.0-0':'fr-FR' }}</span></div>
-              </div>
-
-              <!-- Commentaires des professeurs -->
-              <div>
-                <h4 style="margin:0 0 10px">Commentaires des professeurs ({{ f.commentaires.length }})</h4>
-                @if (f.commentaires.length > 0) {
-                  <div style="display:flex;flex-direction:column;gap:8px">
-                    @for (c of f.commentaires; track c.id) {
-                      <div style="border:1px solid var(--color-divider);border-left:3px solid var(--color-accent);padding:10px 12px;font-size:13px">
-                        <p style="margin:0;white-space:pre-wrap">{{ c.contenu }}</p>
-                        <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent);margin-top:6px">{{ c.enseignant?.prenom }} {{ c.enseignant?.nom }} — {{ c.updatedAt | date:'dd/MM/yyyy à HH:mm' }}</div>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <div style="font-size:13px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">Aucun commentaire enregistré.</div>
-                }
-              </div>
-
-              <!-- Paiements -->
-              <div>
-                <h4 style="margin:0 0 10px">Historique des paiements ({{ f.paiements.length }})</h4>
-                <div style="overflow-x:auto">
-                  <table class="table">
-                    <thead><tr><th>Date</th><th>Montant</th><th>Mode</th><th>Reçu</th></tr></thead>
-                    <tbody>
-                      @for (p of f.paiements; track p.id) {
-                        <tr><td>{{ p.datePaiement | date:'dd/MM/yyyy' }}</td><td>{{ p.montant | number:'1.0-0':'fr-FR' }}</td><td>{{ p.mode }}</td><td>{{ p.numeroRecu }}</td></tr>
-                      } @empty { <tr><td colspan="4" style="text-align:center;color:color-mix(in srgb, var(--color-text) 45%, transparent);padding:16px 0">Aucun paiement</td></tr> }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- Notes -->
-              <div>
-                <h4 style="margin:0 0 10px">Notes ({{ f.notes.length }})</h4>
-                <div style="overflow-x:auto">
-                  <table class="table">
-                    <thead><tr><th>Date</th><th>Matière</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                      @for (n of f.notes; track n.id) {
-                        <tr><td>{{ n.dateSaisie | date:'dd/MM/yyyy' }}</td><td>{{ n.matiere?.nom }}</td><td>{{ n.typeEvaluation }}</td><td [style.color]="n.note >= (n.sur/2) ? '#1a7a3f' : 'var(--color-accent-700)'" style="font-weight:600">{{ n.note }}/{{ n.sur }}</td></tr>
-                      } @empty { <tr><td colspan="4" style="text-align:center;color:color-mix(in srgb, var(--color-text) 45%, transparent);padding:16px 0">Aucune note</td></tr> }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- Absences / retards -->
-              <div>
-                <h4 style="margin:0 0 10px">Absences &amp; retards ({{ f.absences.length }})</h4>
-                <div style="overflow-x:auto">
-                  <table class="table">
-                    <thead><tr><th>Date</th><th>Type</th><th>Matière</th><th>Justifié</th></tr></thead>
-                    <tbody>
-                      @for (a of f.absences; track a.id) {
-                        <tr><td>{{ a.date | date:'dd/MM/yyyy' }}</td><td><span class="tag" [class]="a.type === 'ABSENCE' ? 'tag-danger' : 'tag-accent'">{{ a.type }}</span></td><td>{{ a.matiere?.nom }}</td><td>{{ a.justified ? 'Oui' : 'Non' }}</td></tr>
-                      } @empty { <tr><td colspan="4" style="text-align:center;color:color-mix(in srgb, var(--color-text) 45%, transparent);padding:16px 0">Aucune absence enregistrée</td></tr> }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
     </div>
   `,
 })
 export class DgElevesComponent implements OnInit {
   private http = inject(HttpClient);
   private alertService = inject(AlertService);
+  private router = inject(Router);
+  private anneeScolaireService = inject(AnneeScolaireService);
+
+  anneeActiveId = signal<string | null>(null);
 
   eleves = signal<any[]>([]);
   loading = signal(true);
@@ -171,10 +97,17 @@ export class DgElevesComponent implements OnInit {
   page = signal(1);
   pageSize = 10;
 
-  fiche = signal<any>(null);
-
   classeOf(e: any): string | undefined {
     return e.inscriptions?.[0]?.classe?.nom;
+  }
+
+  classeIdOf(e: any): string | undefined {
+    return e.inscriptions?.[0]?.classe?.id;
+  }
+
+  openClasse(classeId: string | undefined) {
+    if (!classeId) return;
+    this.router.navigate(['/dsi/classes', classeId]);
   }
 
   classesOptions = computed(() => {
@@ -206,7 +139,18 @@ export class DgElevesComponent implements OnInit {
     return this.filteredEleves().slice(start, start + this.pageSize);
   });
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.anneeScolaireService.findAll().subscribe({
+      next: (annees) => this.anneeActiveId.set(annees.find((a: any) => a.statut === 'active')?.id || null),
+      error: () => this.anneeActiveId.set(null),
+    });
+  }
+
+  estInscritAnneeActive(e: any): boolean {
+    const anneeId = this.anneeActiveId();
+    return !!anneeId && e.inscriptions?.[0]?.anneeScolaireId === anneeId;
+  }
 
   load() {
     this.loading.set(true);
@@ -217,9 +161,6 @@ export class DgElevesComponent implements OnInit {
   }
 
   openFiche(e: any) {
-    this.http.get<any>(`${environment.apiUrl}/etudiants/${e.id}/fiche-complete`).subscribe({
-      next: (f) => this.fiche.set(f),
-      error: () => this.alertService.error('Erreur lors du chargement de la fiche élève'),
-    });
+    this.router.navigate(['/dg/eleves', e.id]);
   }
 }

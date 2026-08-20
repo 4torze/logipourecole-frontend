@@ -1,8 +1,9 @@
-import { Component, inject, signal, OnInit, HostListener } from '@angular/core';
+import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { RealtimeService } from '../../core/services/realtime.service';
 
 @Component({
   selector: 'app-notifications-bell',
@@ -59,9 +60,13 @@ import { environment } from '../../../environments/environment';
 export class NotificationsBellComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private realtime = inject(RealtimeService);
 
-  notifications = signal<any[]>([]);
-  unreadCount = signal(0);
+  // Store partagé (RealtimeService) : alimenté au chargement initial par REST
+  // ci-dessous, puis tenu à jour en direct par l'événement socket 'notification:new'
+  // — c'est ce qui rend la cloche temps réel sans rechargement de page.
+  notifications = this.realtime.notifications;
+  unreadCount = this.realtime.unreadCount;
   open = false;
 
   ngOnInit() {
@@ -70,12 +75,12 @@ export class NotificationsBellComponent implements OnInit {
 
   loadNotifications() {
     this.http.get<any[]>(`${environment.apiUrl}/notifications`).subscribe({
-      next: (data) => this.notifications.set(data),
-      error: () => this.notifications.set([]),
+      next: (data) => this.realtime.setNotifications(data),
+      error: () => this.realtime.setNotifications([]),
     });
     this.http.get<any>(`${environment.apiUrl}/notifications/unread-count`).subscribe({
-      next: (data) => this.unreadCount.set(data.count || 0),
-      error: () => this.unreadCount.set(0),
+      next: (data) => this.realtime.setUnreadCount(data.count || 0),
+      error: () => this.realtime.setUnreadCount(0),
     });
   }
 

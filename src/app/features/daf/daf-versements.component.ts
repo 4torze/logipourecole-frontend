@@ -52,7 +52,7 @@ import { environment } from '../../../environments/environment';
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Tranches configurées</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead><tr><th>Classe</th><th>Ordre</th><th>Libellé</th><th>Description</th><th>Base de calcul</th><th>Échéance</th><th>Statut</th><th>Paiements</th><th>Actions</th></tr></thead>
               <tbody>

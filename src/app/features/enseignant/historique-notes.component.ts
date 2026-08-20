@@ -46,7 +46,7 @@ import { environment } from '../../../environments/environment';
 
         <!-- Tableau -->
         <div class="gs-panel"><div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr>

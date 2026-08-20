@@ -6,6 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { RoleUtilisateur, SuperAdminStats } from '../../core/models';
 import { environment } from '../../../environments/environment';
 import { SuperAdminTabService } from '../../core/services/super-admin-tab.service';
+import { AlertService } from '../../core/services/alert.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -265,7 +266,7 @@ import { SuperAdminTabService } from '../../core/services/super-admin-tab.servic
             <div class="gs-panel-body" style="display:flex;flex-direction:column;gap:10px">
               <button class="btn btn-primary btn-block" (click)="navigate('/daf')">Tableau financier</button>
               <button class="btn btn-secondary btn-block" (click)="navigate('/dg/utilisateurs')">Gérer les utilisateurs</button>
-              <button class="btn btn-secondary btn-block" (click)="navigate('/daf/recus')">Templates de reçus</button>
+              <button class="btn btn-secondary btn-block" (click)="navigate('/templates')">Template système</button>
               <div class="hr"></div>
               <button class="btn btn-secondary btn-block" (click)="exportData('etudiants/csv')">Exporter étudiants (CSV)</button>
               <button class="btn btn-secondary btn-block" (click)="exportData('tableau-financier/pdf')">Exporter tableau financier (PDF)</button>
@@ -470,6 +471,7 @@ export class DashboardComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
   private superAdminTabService = inject(SuperAdminTabService);
+  private alertService = inject(AlertService);
   RoleUtilisateur = RoleUtilisateur;
 
   kpi = signal<any>({});
@@ -551,7 +553,7 @@ export class DashboardComponent implements OnInit {
           topClasses: d?.topClasses || [],
           repartitionFilieres: d?.repartitionFilieres || [],
         }),
-        error: () => this.kpi.set({}),
+        error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
     } else if (r === RoleUtilisateur.DAF) {
       this.http.get<any>(`${environment.apiUrl}/daf/performance`).subscribe({
@@ -563,7 +565,7 @@ export class DashboardComponent implements OnInit {
           enRetard: d?.effectifQuiDoivent || 0,
           etudiants: d?.effectifTotal || 0,
         }),
-        error: () => this.kpi.set({}),
+        error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
     } else if (r === RoleUtilisateur.DSI) {
       this.http.get<any>(`${environment.apiUrl}/users?limit=1000`).subscribe({
@@ -575,7 +577,7 @@ export class DashboardComponent implements OnInit {
             blockedUsers: users.filter((u: any) => u.statut === 'INACTIF').length,
             enseignants: users.filter((u: any) => u.role === 'ENSEIGNANT').length,
           });
-        }, error: () => this.kpi.set({}),
+        }, error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
       this.http.get<any>(`${environment.apiUrl}/etudiants?limit=1000`).subscribe({
         next: (res) => this.kpi.update((k) => ({ ...k, etudiants: (res.data || []).length })),
@@ -600,7 +602,7 @@ export class DashboardComponent implements OnInit {
           notesSaisies: d?.indicateursAcademiques?.moyennesSaisies || 0,
           bulletinsGeneres: d?.indicateursAcademiques?.bulletinsGeneres || 0,
           bulletinsValides: d?.indicateursAcademiques?.bulletinsValides || 0,
-        }), error: () => this.kpi.set({}),
+        }), error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
       this.http.get<any[]>(`${environment.apiUrl}/etudes/salles`).subscribe({
         next: (d) => this.kpi.update((k) => ({ ...k, salles: d.length })), error: () => {},
@@ -610,7 +612,7 @@ export class DashboardComponent implements OnInit {
         next: (d) => {
           const matieres = d.reduce((s: number, a: any) => s + (a.matieres?.length || 0), 0);
           this.kpi.set({ classes: d.length, matieres });
-        }, error: () => this.kpi.set({}),
+        }, error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
       this.http.get<any[]>(`${environment.apiUrl}/enseignant/emploi-du-temps`).subscribe({
         next: (d) => this.kpi.update((k) => ({ ...k, creneaux: d.length })), error: () => {},
@@ -628,7 +630,7 @@ export class DashboardComponent implements OnInit {
           next: (d) => this.kpi.set({
             reste: d?.reste || 0,
             tauxPaiement: d?.tauxPaiement || 0,
-          }), error: () => this.kpi.set({}),
+          }), error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
         });
       }
     } else if (r === RoleUtilisateur.MARKETING) {
@@ -638,11 +640,11 @@ export class DashboardComponent implements OnInit {
           inscrits: d?.indicateursMarketing?.inscrits || 0,
           perdus: d?.indicateursMarketing?.perdus || 0,
           tauxConversion: d?.indicateursMarketing?.tauxConversion || 0,
-        }), error: () => this.kpi.set({}),
+        }), error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
     } else if (r === RoleUtilisateur.SECRETAIRE) {
       this.http.get<any>(`${environment.apiUrl}/etudiants?limit=1000`).subscribe({
-        next: (res) => this.kpi.set({ etudiants: (res.data || []).length }), error: () => this.kpi.set({}),
+        next: (res) => this.kpi.set({ etudiants: (res.data || []).length }), error: () => { this.kpi.set({}); this.alertService.error('Erreur lors du chargement du tableau de bord'); },
       });
     }
   }

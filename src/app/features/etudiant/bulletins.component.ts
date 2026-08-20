@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { AlertService } from '../../core/services/alert.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -14,7 +15,7 @@ import { environment } from '../../../environments/environment';
 
       <div class="gs-panel"><div class="gs-panel-body">
         @if (bulletins().length > 0) {
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Période</th><th>Année</th><th>Classe</th><th>Moyenne</th><th>Rang</th><th>Mention</th><th>Statut</th><th>Actions</th></tr>
@@ -51,6 +52,7 @@ import { environment } from '../../../environments/environment';
 export class EtudiantBulletinsComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
+  private alertService = inject(AlertService);
 
   etudiantId = computed(() => this.auth.currentUser()?.etudiantId || '');
   bulletins = signal<any[]>([]);
@@ -65,6 +67,21 @@ export class EtudiantBulletinsComponent implements OnInit {
   }
 
   downloadBulletin(b: any) {
-    window.open(`${environment.apiUrl}/bulletins/generer-pdf?etudiantId=${b.etudiantId}&classeId=${b.classeId}&periodeId=${b.periodeId}&anneeScolaireId=${b.anneeScolaireId}`, '_blank');
+    this.http.post(`${environment.apiUrl}/bulletins/generer-pdf`, {
+      etudiantId: b.etudiantId,
+      classeId: b.classeId,
+      periodeId: b.periodeId,
+      anneeScolaireId: b.anneeScolaireId,
+    }, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bulletin-${b.periode?.libelle || ''}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.alertService.error('Erreur lors du téléchargement du bulletin'),
+    });
   }
 }

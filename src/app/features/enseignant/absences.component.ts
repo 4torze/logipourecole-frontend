@@ -40,7 +40,7 @@ interface Affectation {
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Liste des absences/retards</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Date</th><th>Étudiant</th><th>Type</th><th>Justifié</th><th>Motif</th><th>Actions</th></tr>
@@ -55,10 +55,7 @@ interface Affectation {
                     <td>{{ a.motif || '—' }}</td>
                     <td>
                       <div style="display:flex;align-items:center;gap:6px">
-                        <button (click)="toggleJustifie(a)" [disabled]="actionLoading() === 'justify-' + a.id" class="btn btn-secondary">
-                          @if (actionLoading() === 'justify-' + a.id) { <span class="material-symbols-outlined" style="font-size:14px">progress_activity</span> }
-                          Justifier
-                        </button>
+                        <button (click)="openEditAbsence(a)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button>
                         <button (click)="remove(a.id)" [disabled]="actionLoading() === 'delete-' + a.id" class="btn btn-icon btn-danger" title="Supprimer">
                           @if (actionLoading() === 'delete-' + a.id) { <span class="material-symbols-outlined" style="font-size:18px">progress_activity</span> } @else { <span class="material-symbols-outlined" style="font-size:18px">delete</span> }
                         </button>
@@ -152,6 +149,46 @@ interface Affectation {
         </div>
       </div>
     }
+
+    <!-- Modal Modifier absence -->
+    @if (showEditAbsence()) {
+      <div class="dialog-backdrop" (click)="showEditAbsence.set(false)">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3 class="dialog-title">Modifier l'absence/retard</h3>
+            <button class="btn btn-icon btn-secondary" (click)="showEditAbsence.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <form (ngSubmit)="saveEditAbsence()" style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <label>Type</label>
+              <select [(ngModel)]="editAbsenceForm.type" name="type" required class="input">
+                <option value="ABSENCE">Absence</option>
+                <option value="RETARD">Retard</option>
+                <option value="EXCLUSION">Exclusion</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Date</label>
+              <input type="date" [(ngModel)]="editAbsenceForm.date" name="date" required class="input" />
+            </div>
+            <div class="field">
+              <label>Motif</label>
+              <input type="text" [(ngModel)]="editAbsenceForm.motif" name="motif" placeholder="Optionnel" class="input" />
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+              <input type="checkbox" [(ngModel)]="editAbsenceForm.justified" name="justified" style="width:16px;height:16px;accent-color:var(--color-accent)" />
+              Justifié
+            </label>
+            <div class="dialog-actions">
+              <button type="button" (click)="showEditAbsence.set(false)" class="btn btn-secondary">Annuler</button>
+              <button type="submit" [disabled]="editSaving()" class="btn btn-primary">
+                @if (editSaving()) { <span class="material-symbols-outlined" style="font-size:14px">progress_activity</span> } Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
   `,
 })
 export class AbsencesComponent implements OnInit {
@@ -167,6 +204,9 @@ export class AbsencesComponent implements OnInit {
   actionLoading = signal<string | null>(null);
   showFilters = signal(false);
   showForm = signal(false);
+  showEditAbsence = signal(false);
+  editSaving = signal(false);
+  editAbsenceForm: { id: string; type: TypeAbsence; date: string; motif: string; justified: boolean } = { id: '', type: 'ABSENCE', date: '', motif: '', justified: false };
 
   selectedClasseId = '';
   selectedMatiereId = '';
@@ -258,11 +298,28 @@ export class AbsencesComponent implements OnInit {
     });
   }
 
-  toggleJustifie(a: Absence) {
-    this.actionLoading.set('justify-' + a.id);
-    this.absenceService.update(a.id, { justified: !a.justified }).subscribe({
-      next: () => { this.actionLoading.set(null); this.alertService.success('Statut mis à jour'); this.loadAbsences(); },
-      error: (err: any) => { this.actionLoading.set(null); const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur mise à jour'; this.alertService.error(msg); },
+  openEditAbsence(a: Absence) {
+    this.editAbsenceForm = {
+      id: a.id,
+      type: a.type,
+      date: a.date ? new Date(a.date).toISOString().slice(0, 10) : '',
+      motif: a.motif || '',
+      justified: !!a.justified,
+    };
+    this.showEditAbsence.set(true);
+  }
+
+  saveEditAbsence() {
+    this.editSaving.set(true);
+    const { id, ...dto } = this.editAbsenceForm;
+    this.absenceService.update(id, dto).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.showEditAbsence.set(false);
+        this.alertService.success('Absence modifiée');
+        this.loadAbsences();
+      },
+      error: (err: any) => { this.editSaving.set(false); this.alertService.error(err?.message || 'Erreur lors de la modification'); },
     });
   }
 

@@ -25,7 +25,7 @@ import { environment } from '../../../environments/environment';
               Aucun devoir pour le moment.
             </div>
           } @else {
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Matière</th><th>Titre</th><th>Description</th><th>Date limite</th><th style="text-align:center">Points</th><th style="text-align:center">Statut</th></tr>

@@ -36,6 +36,9 @@ import { environment } from '../../../environments/environment';
               <div style="display:flex;justify-content:space-between"><span class="text-muted">Statut</span><span class="tag" [class]="scolarite()?.statut === 'À jour' ? 'tag-success' : 'tag-danger'">{{ scolarite()?.statut }}</span></div>
               <div style="display:flex;justify-content:space-between"><span class="text-muted">Montant total</span><strong>{{ scolarite()?.montantTotal || 0 | number:'1.0-0':'fr-FR' }} FCFA</strong></div>
               <div style="display:flex;justify-content:space-between"><span class="text-muted">Total payé</span><strong style="color:#1a7a3f">{{ scolarite()?.totalPaye || 0 | number:'1.0-0':'fr-FR' }} FCFA</strong></div>
+              <button (click)="router.navigate(['/etudiant/paiements'])" class="btn btn-secondary btn-sm" style="margin-top:4px">
+                <span class="material-symbols-outlined" style="font-size:16px">receipt_long</span> Voir mes paiements
+              </button>
             </div>
           }
         </div></div>

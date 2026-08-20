@@ -37,13 +37,13 @@ interface User {
               <span class="dialog-title">Créer un utilisateur</span>
               <button class="btn btn-icon btn-secondary" (click)="showForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
-            <p style="margin:0;font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">En tant que DG, vous créez les comptes DAF et DSI. Un mot de passe temporaire sera généré automatiquement et affiché une seule fois : à vous de le communiquer à l'utilisateur, qui devra le changer dès sa première connexion.</p>
+            <p style="margin:0;font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">En tant que DG, vous pouvez créer tout type de compte : DAF, DSI, Secrétariat ou Enseignant. Un mot de passe temporaire sera généré automatiquement et affiché une seule fois : à vous de le communiquer à l'utilisateur, qui devra le changer dès sa première connexion.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
               <div class="field"><label>Nom</label><input type="text" [(ngModel)]="form.nom" placeholder="Nom" class="input" /></div>
               <div class="field"><label>Prénom</label><input type="text" [(ngModel)]="form.prenom" placeholder="Prénom" class="input" /></div>
               <div class="field"><label>Email</label><input type="email" [(ngModel)]="form.email" placeholder="Email" class="input" /></div>
               <div class="field"><label>Téléphone</label><input type="text" [(ngModel)]="form.telephone" placeholder="Téléphone" class="input" /></div>
-              <div class="field" style="grid-column:span 2"><label>Rôle</label><select [(ngModel)]="form.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option></select></div>
+              <div class="field" style="grid-column:span 2"><label>Rôle</label><select [(ngModel)]="form.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option><option value="SECRETAIRE">Secrétariat</option><option value="ENSEIGNANT">Enseignant</option><option value="ETUDES">Direction des Études</option><option value="MARKETING">Marketing</option></select></div>
             </div>
             <div class="dialog-actions">
               <button (click)="showForm.set(false)" class="btn btn-secondary">Annuler</button>
@@ -93,7 +93,7 @@ interface User {
               <div class="field"><label>Prénom</label><input type="text" [(ngModel)]="editForm.prenom" placeholder="Prénom" class="input" /></div>
               <div class="field"><label>Email</label><input type="email" [value]="editForm.email" disabled class="input" /></div>
               <div class="field"><label>Téléphone</label><input type="text" [(ngModel)]="editForm.telephone" placeholder="Téléphone" class="input" /></div>
-              <div class="field"><label>Rôle</label><select [(ngModel)]="editForm.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option></select></div>
+              <div class="field"><label>Rôle</label><select [(ngModel)]="editForm.role" class="input"><option value="DAF">DAF (Finances)</option><option value="DSI">DSI</option><option value="SECRETAIRE">Secrétariat</option><option value="ENSEIGNANT">Enseignant</option><option value="ETUDES">Direction des Études</option><option value="MARKETING">Marketing</option></select></div>
               <div class="field"><label>Statut</label><select [(ngModel)]="editForm.statut" class="input"><option value="ACTIF">Actif</option><option value="INACTIF">Bloqué</option></select></div>
             </div>
             <div class="dialog-actions">
@@ -108,7 +108,7 @@ interface User {
 
       <div class="gs-panel">
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr>

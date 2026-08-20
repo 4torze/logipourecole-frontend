@@ -11,6 +11,8 @@ export interface CreatePeriodeDto {
   dateFin: string;
 }
 
+export type UpdatePeriodeDto = Partial<CreatePeriodeDto>;
+
 @Injectable({ providedIn: 'root' })
 export class PeriodeService {
   private http = inject(HttpClient);
@@ -22,5 +24,9 @@ export class PeriodeService {
 
   create(dto: CreatePeriodeDto): Observable<Periode> {
     return this.http.post<Periode>(this.baseUrl, dto);
+  }
+
+  update(id: string, dto: UpdatePeriodeDto): Observable<Periode> {
+    return this.http.patch<Periode>(`${this.baseUrl}/${id}`, dto);
   }
 }

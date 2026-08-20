@@ -45,7 +45,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
                 }
               </div>
               @if ((elevesParClasse()[activeTabClasseId()]?.length || 0) > 0) {
-                <div style="overflow-x:auto">
+                <div class="table-scroll">
                   <table class="table">
                     <thead>
                       <tr>
@@ -85,7 +85,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
             <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">{{ selectedClasseLabel() }}</h3></div>
             <div class="gs-panel-body">
             @if (filteredEleves().length > 0) {
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table">
                   <thead>
                     <tr>
@@ -172,7 +172,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
 
             <!-- Mes notes pour cet élève -->
             <h4 style="margin:0;font-size:14px">Mes notes saisies</h4>
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Devoir</th><th>Matière</th><th>Période</th><th style="text-align:center">Note</th><th style="text-align:center">Sur</th><th>Date</th></tr>
@@ -202,7 +202,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
 
             <!-- Mes absences pour cet élève -->
             <h4 style="margin:0;font-size:14px">Absences &amp; retards (mes matières)</h4>
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Date</th><th>Type</th><th>Matière</th><th>Justifié</th><th>Motif</th></tr>

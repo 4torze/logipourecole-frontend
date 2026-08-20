@@ -71,7 +71,7 @@ import { environment } from '../../../environments/environment';
               </div>
             </div>
 
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr>

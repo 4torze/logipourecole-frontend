@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap, BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, Utilisateur } from '../models';
+import { RealtimeService } from './realtime.service';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +12,7 @@ import { AuthResponse, Utilisateur } from '../models';
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private realtimeService = inject(RealtimeService);
 
   private currentUserSubject = new BehaviorSubject<Utilisateur | null>(null);
   currentUser$ = this.currentUserSubject.asObservable();
@@ -30,6 +32,7 @@ export class AuthService {
       const user = JSON.parse(userStr);
       this.currentUserSubject.next(user);
       this.currentUser.set(user);
+      this.realtimeService.connect(token);
     }
   }
 
@@ -55,6 +58,7 @@ export class AuthService {
             localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
             this.currentUserSubject.next(res.user);
             this.currentUser.set(res.user);
+            this.realtimeService.connect(res.token);
           }
         }),
       );
@@ -70,6 +74,7 @@ export class AuthService {
             localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
             this.currentUserSubject.next(res.user);
             this.currentUser.set(res.user);
+            this.realtimeService.connect(res.token);
           }
         }),
       );
@@ -80,6 +85,7 @@ export class AuthService {
     localStorage.removeItem(this.USER_KEY);
     this.currentUserSubject.next(null);
     this.currentUser.set(null);
+    this.realtimeService.disconnect();
     this.router.navigate(['/login']);
   }
 

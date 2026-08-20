@@ -48,7 +48,7 @@ function getSubdomain(): string {
             <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Classes et frais de scolarité</h3></div>
             <div class="gs-panel-body">
               @if (ecole()?.classes?.length) {
-                <div style="overflow-x:auto">
+                <div class="table-scroll">
                   <table class="table">
                     <thead><tr><th>Classe</th><th>Niveau</th><th>Filière</th><th>Frais</th></tr></thead>
                     <tbody>
@@ -103,8 +103,9 @@ export class PublicBrochureComponent implements OnInit {
   }
 
   downloadPdf() {
-    const subdomain = getSubdomain();
-    window.open(`${environment.apiUrl}/public/brochure/pdf?subdomain=${subdomain}`, '_blank');
+    const ecoleId = this.ecole()?.id;
+    if (!ecoleId) return;
+    window.open(`${environment.apiUrl}/public/brochure/${ecoleId}/pdf`, '_blank');
   }
   print() { window.print(); }
 }

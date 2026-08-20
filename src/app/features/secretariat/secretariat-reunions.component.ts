@@ -33,7 +33,7 @@ import { environment } from '../../../environments/environment';
             <span class="material-symbols-outlined" style="font-size:18px">add</span> Planifier une réunion
           </button>
         </div>
-        <div style="overflow-x:auto">
+        <div class="table-scroll">
           <table class="table">
             <thead>
               <tr><th>Titre</th><th>Date</th><th>Lieu</th><th>Participants</th><th>Statut</th><th>Compte rendu</th><th>Actions</th></tr>

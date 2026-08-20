@@ -5,12 +5,15 @@ import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AlertService } from '../../core/services/alert.service';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleUtilisateur } from '../../core/models';
 import { filiereIds } from '../../core/utils/filiere.util';
+import { BreadcrumbComponent } from '../../shared/ui/breadcrumb.component';
 
 @Component({
   selector: 'app-dsi-classe-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BreadcrumbComponent],
   styles: [`
     .dtab { padding:10px 16px; font-size:13px; font-weight:600; font-family:var(--font-heading); border:none; background:none; cursor:pointer; color:color-mix(in srgb, var(--color-text) 55%, transparent); border-bottom:2px solid transparent; margin-bottom:-2px; }
     .dtab.active { color:var(--color-accent); border-bottom-color:var(--color-accent); }
@@ -22,9 +25,32 @@ import { filiereIds } from '../../core/utils/filiere.util';
   `],
   template: `
     <div class="page-container">
-      <button (click)="goBack()" class="btn btn-ghost" style="padding-left:0;margin-bottom:16px">
-        <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Retour aux classes
-      </button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:16px;flex-wrap:wrap">
+        <app-breadcrumb [items]="breadcrumbItems()"></app-breadcrumb>
+        @if (canSendAnnonce()) {
+          <button (click)="showAnnonceForm.set(true)" class="btn btn-secondary btn-sm">
+            <span class="material-symbols-outlined" style="font-size:16px">campaign</span> Envoyer une annonce à la classe
+          </button>
+        }
+      </div>
+
+      @if (showAnnonceForm()) {
+        <div class="dialog-backdrop" (click)="showAnnonceForm.set(false)">
+          <div class="dialog" (click)="$event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="dialog-title">Annonce WhatsApp à la classe</span>
+              <button class="btn btn-icon btn-secondary" (click)="showAnnonceForm.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            </div>
+            <p class="text-muted" style="font-size:12px;margin:-6px 0 0">Envoyée par WhatsApp à tous les élèves inscrits de cette classe pour l'année active, et enregistrée dans leur boîte de réception.</p>
+            <div class="field"><label>Sujet</label><input type="text" [(ngModel)]="annonceForm.sujet" class="input" /></div>
+            <div class="field"><label>Contenu</label><textarea [(ngModel)]="annonceForm.contenu" class="input" rows="4"></textarea></div>
+            <div class="dialog-actions">
+              <button (click)="showAnnonceForm.set(false)" class="btn btn-secondary">Annuler</button>
+              <button (click)="sendAnnonceClasse()" [disabled]="sendingAnnonce()" class="btn btn-primary">Envoyer</button>
+            </div>
+          </div>
+        </div>
+      }
 
       @if (loading()) {
         <div class="text-muted" style="display:flex;align-items:center;gap:8px;font-size:13px;padding:40px 0">
@@ -42,7 +68,7 @@ import { filiereIds } from '../../core/utils/filiere.util';
             <div class="gs-stat"><span class="gs-stat-label">Notes saisies</span><span class="gs-stat-num">{{ classeStats().totalNotes }}</span></div>
             <div class="gs-stat"><span class="gs-stat-label">Moyenne générale</span><span class="gs-stat-num">{{ classeStats().totalNotes ? classeStats().moyenneGenerale + '/20' : '—' }}</span></div>
             <div class="gs-stat"><span class="gs-stat-label">Absences</span><span class="gs-stat-num">{{ classeStats().totalAbsences }}</span></div>
-            <div class="gs-stat"><span class="gs-stat-label">Professeurs</span><span class="gs-stat-num">{{ (classeDetails()?.enseignants || []).length }}</span></div>
+            <div class="gs-stat"><span class="gs-stat-label">Enseignants</span><span class="gs-stat-num">{{ (classeDetails()?.enseignants || []).length }}</span></div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
             <div class="gs-panel">
@@ -105,7 +131,9 @@ import { filiereIds } from '../../core/utils/filiere.util';
               @for (cf of classeDetails()?.classe?.filieres || []; track cf.filiereId) {
                 <span class="tag tag-neutral" style="display:inline-flex;align-items:center;gap:4px">
                   {{ cf.filiere?.nom }}
-                  <button (click)="removeFiliereFromClasseDetail(cf.filiereId)" class="chip-x" title="Retirer cette filière"><span class="material-symbols-outlined" style="font-size:14px">close</span></button>
+                  @if (canEdit()) {
+                    <button (click)="removeFiliereFromClasseDetail(cf.filiereId)" class="chip-x" title="Retirer cette filière"><span class="material-symbols-outlined" style="font-size:14px">close</span></button>
+                  }
                 </span>
               }
               @if (availableFilieresForClasse().length > 0) {
@@ -126,9 +154,9 @@ import { filiereIds } from '../../core/utils/filiere.util';
             @if (classeDetailTab()==='eleves') {
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                 <span class="text-muted" style="font-size:13px">{{ (classeDetails()?.etudiants || []).length }} élève(s) inscrit(s)</span>
-                <button (click)="showAddEleve.set(!showAddEleve())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Ajouter un élève</button>
+                @if (canEdit()) { <button (click)="showAddEleve.set(!showAddEleve())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Ajouter un élève</button> }
               </div>
-              @if (showAddEleve()) {
+              @if (showAddEleve() && canEdit()) {
                 <div class="gs-well" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
                   <select [(ngModel)]="addEleveId" class="input" style="flex:1">
                     <option value="">Sélectionner un élève...</option>
@@ -138,7 +166,7 @@ import { filiereIds } from '../../core/utils/filiere.util';
                   <button (click)="showAddEleve.set(false)" class="btn btn-secondary">Annuler</button>
                 </div>
               }
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table"><thead><tr><th>Nom</th><th>Prénom</th><th>Sexe</th><th>Téléphone</th><th>Email</th><th style="text-align:center;width:80px">Action</th></tr></thead>
                 <tbody>
                   @for (e of classeDetails()?.etudiants || []; track e.id) {
@@ -152,9 +180,9 @@ import { filiereIds } from '../../core/utils/filiere.util';
             @if (classeDetailTab()==='enseignants') {
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                 <span class="text-muted" style="font-size:13px">{{ (classeDetails()?.enseignants || []).length }} affectation(s)</span>
-                <button (click)="showAddProf.set(!showAddProf())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Ajouter un professeur</button>
+                @if (canEdit()) { <button (click)="showAddProf.set(!showAddProf())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Ajouter un professeur</button> }
               </div>
-              @if (showAddProf()) {
+              @if (showAddProf() && canEdit()) {
                 <div class="gs-well" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
                   <select [(ngModel)]="addProfEnseignantId" class="input" style="flex:1">
                     <option value="">Enseignant...</option>
@@ -168,7 +196,7 @@ import { filiereIds } from '../../core/utils/filiere.util';
                   <button (click)="showAddProf.set(false)" class="btn btn-secondary" style="flex:none">Annuler</button>
                 </div>
               }
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table"><thead><tr><th>Nom</th><th>Prénom</th><th>Matière</th><th>Email</th><th>Téléphone</th><th>Statut</th></tr></thead>
                 <tbody>
                   @for (a of classeDetails()?.enseignants || []; track a.id) {
@@ -184,9 +212,9 @@ import { filiereIds } from '../../core/utils/filiere.util';
             @if (classeDetailTab()==='matieres') {
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                 <span class="text-muted" style="font-size:13px">{{ (classeDetails()?.matieres || []).length }} matière(s) affectée(s)</span>
-                <button (click)="showAddMatiere.set(!showAddMatiere())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">add</span> Ajouter une matière</button>
+                @if (canEdit()) { <button (click)="showAddMatiere.set(!showAddMatiere())" class="btn btn-primary btn-sm"><span class="material-symbols-outlined" style="font-size:16px">add</span> Ajouter une matière</button> }
               </div>
-              @if (showAddMatiere()) {
+              @if (showAddMatiere() && canEdit()) {
                 <div class="gs-well" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
                   <select [(ngModel)]="addMatiereId" class="input" style="flex:1">
                     <option value="">Matière...</option>
@@ -198,12 +226,12 @@ import { filiereIds } from '../../core/utils/filiere.util';
                 </div>
                 <p class="text-muted" style="font-size:11px;margin:0 0 16px">Le coefficient est propre à cette classe : la même matière peut avoir un coefficient différent dans une autre classe.</p>
               }
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table"><thead><tr><th>Matière</th><th>Code</th><th>Coefficient</th><th>Actions</th></tr></thead>
                 <tbody>
                   @for (cm of classeDetails()?.matieres || []; track cm.id) {
                     <tr><td>{{ cm.matiere?.nom }}</td><td>{{ cm.matiere?.code }}</td><td>{{ cm.coefficient }}</td>
-                      <td><button (click)="removeMatiereFromClasse(cm.id)" class="btn btn-icon btn-danger" title="Retirer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></td>
+                      <td>@if (canEdit()) { <button (click)="removeMatiereFromClasse(cm.id)" class="btn btn-icon btn-danger" title="Retirer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button> }</td>
                     </tr>
                   } @empty {
                     <tr><td colspan="4" class="table-empty">Aucune matière affectée</td></tr>
@@ -267,7 +295,7 @@ import { filiereIds } from '../../core/utils/filiere.util';
 
               <!-- Notes -->
               <h4 style="margin:0 0 8px;font-size:14px">Notes</h4>
-              <div style="overflow-x:auto;margin-bottom:20px">
+              <div class="table-scroll" style="margin-bottom:20px">
                 <table class="table">
                   <thead><tr><th>Matière</th><th>Période</th><th style="text-align:center">Note</th><th style="text-align:center">Sur</th><th>Date</th></tr></thead>
                   <tbody>
@@ -294,7 +322,7 @@ import { filiereIds } from '../../core/utils/filiere.util';
 
               <!-- Absences -->
               <h4 style="margin:0 0 8px;font-size:14px">Absences &amp; retards</h4>
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table">
                   <thead><tr><th>Date</th><th>Type</th><th>Matière</th><th>Justifié</th></tr></thead>
                   <tbody>
@@ -329,6 +357,42 @@ export class DsiClasseDetailComponent implements OnInit {
   private alertService = inject(AlertService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private authService = inject(AuthService);
+
+  // Le DG a un accès lecture seule à cette page (pour l'envoi d'annonces à la
+  // classe) — seul le DSI peut retirer une filière/matière d'une classe ici.
+  canEdit(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return role === RoleUtilisateur.DSI || role === RoleUtilisateur.SUPER_ADMIN;
+  }
+
+  // L'envoi d'annonce WhatsApp à la classe est réservé au DG (cf. cahier des
+  // charges — "cas particulier" section Annonces), pas au DSI.
+  canSendAnnonce(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return role === RoleUtilisateur.DG || role === RoleUtilisateur.SUPER_ADMIN;
+  }
+
+  showAnnonceForm = signal(false);
+  sendingAnnonce = signal(false);
+  annonceForm = { sujet: '', contenu: '' };
+
+  sendAnnonceClasse() {
+    if (!this.annonceForm.sujet.trim() || !this.annonceForm.contenu.trim()) {
+      this.alertService.error('Le sujet et le contenu sont requis');
+      return;
+    }
+    this.sendingAnnonce.set(true);
+    this.http.post(`${environment.apiUrl}/annonces/classe/${this.classeId}`, this.annonceForm).subscribe({
+      next: () => {
+        this.sendingAnnonce.set(false);
+        this.showAnnonceForm.set(false);
+        this.annonceForm = { sujet: '', contenu: '' };
+        this.alertService.success('Annonce envoyée à la classe');
+      },
+      error: (err: any) => { this.sendingAnnonce.set(false); this.alertService.error(err?.error?.message || 'Erreur envoi'); },
+    });
+  }
 
   classeId = '';
   loading = signal(true);
@@ -441,9 +505,16 @@ export class DsiClasseDetailComponent implements OnInit {
     this.loadDetails();
   }
 
-  goBack() {
-    this.router.navigate(['/dsi']);
-  }
+  breadcrumbItems = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    const listeLabel = role === RoleUtilisateur.DG ? 'Élèves' : 'Classes';
+    const listeRoute = role === RoleUtilisateur.DG ? '/dg/eleves' : '/dsi';
+    const nom = this.classeDetails()?.classe?.nom;
+    return [
+      { label: listeLabel, route: listeRoute },
+      { label: nom || '...' },
+    ];
+  });
 
   loadSupportingData() {
     this.http.get<any[]>(`${environment.apiUrl}/dsi/filieres`).subscribe({ next: (d) => this.filieres.set(d), error: () => this.filieres.set([]) });

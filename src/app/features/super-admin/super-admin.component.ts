@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AlertService } from '../../core/services/alert.service';
@@ -167,7 +168,7 @@ import { CreateEcoleResponse } from '../../core/models';
 
                   @if (selectedEcole().abonnements?.length) {
                     <h4 style="font-size:14px;margin:20px 0 12px">Historique des abonnements</h4>
-                    <div style="overflow-x:auto">
+                    <div class="table-scroll">
                       <table class="table">
                         <thead><tr><th>Plan</th><th>Début</th><th>Fin</th><th>Montant</th><th>Statut</th></tr></thead>
                         <tbody>
@@ -194,7 +195,7 @@ import { CreateEcoleResponse } from '../../core/models';
         <!-- Ecoles Table -->
         <div class="gs-panel">
           <div class="gs-panel-body">
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>École</th><th>Abonnement</th><th>Statut</th><th>Utilisateurs</th><th>Étudiants</th><th>Inscrite le</th><th>Actions</th></tr>
@@ -211,6 +212,7 @@ import { CreateEcoleResponse } from '../../core/models';
                       <td>{{ e.dateInscription | date:'dd/MM/yyyy' }}</td>
                       <td><div style="display:flex;align-items:center;gap:4px">
                         <button (click)="openDetails(e)" class="btn btn-icon btn-secondary" title="Voir les détails"><span class="material-symbols-outlined" style="font-size:18px">visibility</span></button>
+                        <button (click)="openBulletinTemplates(e)" class="btn btn-icon btn-secondary" title="Template système"><span class="material-symbols-outlined" style="font-size:18px">description</span></button>
                         <button (click)="confirmToggle(e)" class="btn btn-icon" [class.btn-danger]="e.actif" [class.btn-secondary]="!e.actif" title="{{ e.actif ? 'Bloquer' : 'Activer' }}"><span class="material-symbols-outlined" style="font-size:18px">{{ e.actif ? 'block' : 'check_circle' }}</span></button>
                       </div></td>
                     </tr>
@@ -227,7 +229,7 @@ import { CreateEcoleResponse } from '../../core/models';
         <div class="gs-panel">
           <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Utilisateurs connectés (toutes écoles)</h3></div>
           <div class="gs-panel-body">
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead><tr><th>Nom</th><th>Email</th><th>École</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th></tr></thead>
                 <tbody>
@@ -253,7 +255,7 @@ import { CreateEcoleResponse } from '../../core/models';
         <div class="gs-panel">
           <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Journal d'audit (toutes écoles)</h3></div>
           <div class="gs-panel-body">
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead><tr><th>Date</th><th>École</th><th>Utilisateur</th><th>Action</th><th>Table</th><th>ID</th></tr></thead>
                 <tbody>
@@ -335,6 +337,7 @@ import { CreateEcoleResponse } from '../../core/models';
 })
 export class SuperAdminComponent implements OnInit {
   private http = inject(HttpClient);
+  private router = inject(Router);
   private tabService = inject(SuperAdminTabService);
   private alertService = inject(AlertService);
   private sanitizer = inject(DomSanitizer);
@@ -509,6 +512,10 @@ export class SuperAdminComponent implements OnInit {
       next: (d) => { this.selectedEcole.set(d); this.showDetails.set(true); },
       error: () => { this.selectedEcole.set(ecole); this.showDetails.set(true); },
     });
+  }
+
+  openBulletinTemplates(ecole: any) {
+    this.router.navigate(['/templates'], { queryParams: { ecoleId: ecole.id } });
   }
 
   toggleEcole(ecole: any) {

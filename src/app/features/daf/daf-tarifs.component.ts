@@ -80,7 +80,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
       }
 
       <div class="gs-panel"><div class="gs-panel-body">
-        <div style="overflow-x:auto">
+        <div class="table-scroll">
           <table class="table"><thead><tr><th>Classe</th><th>Filière</th><th>Année</th><th>Montant total (FCFA)</th><th>Actions</th></tr></thead>
           <tbody>
             @for (g of pagedGrilles(); track g.id) {

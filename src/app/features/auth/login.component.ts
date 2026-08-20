@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { RoleUtilisateur } from '../../core/models';
 
 @Component({
   selector: 'app-login',
@@ -87,6 +88,7 @@ import { AuthService } from '../../core/services/auth.service';
             <button type="button" class="demo-chip" (click)="fillDemo('enseignant1@central.edu', 'password123')">Enseignant</button>
             <button type="button" class="demo-chip" (click)="fillDemo('dsi@central.edu', 'password123')">DSI</button>
             <button type="button" class="demo-chip" (click)="fillDemo('secretaire@central.edu', 'password123')">Secrétaire</button>
+            <button type="button" class="demo-chip" (click)="fillDemo('etudiant1@central.edu', 'password123')">Étudiant</button>
           </div>
         </div>
       </div>
@@ -122,6 +124,13 @@ export class LoginComponent {
         }
         if (res.user?.mustChangePassword) {
           this.router.navigate(['/changer-mot-de-passe']);
+          return;
+        }
+        // Le DAF a un « Dashboard » de menu qui pointe vers /daf (DafHomeComponent,
+        // avec ses actions rapides paiement/élève) — la redirection post-connexion
+        // doit pointer vers la même page, pas vers le tableau de bord générique.
+        if (res.user?.role === RoleUtilisateur.DAF) {
+          this.router.navigate(['/daf']);
           return;
         }
         this.router.navigate(['/dashboard']);

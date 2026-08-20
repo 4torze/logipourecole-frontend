@@ -15,7 +15,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Suivi de la scolarité par classe</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
             <thead>
               <tr><th>Classe</th><th>Filière</th><th>Effectif</th><th>Capacité</th><th>Remplissage</th><th>Notes saisies</th><th>Bulletins</th></tr>
@@ -51,7 +51,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
         <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Emploi du temps — Vue globale</h3></div>
         <div class="gs-panel-body">
           @if (edt().length > 0) {
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Jour</th><th>Heure</th><th>Classe</th><th>Matière</th><th>Enseignant</th><th>Salle</th></tr>
@@ -82,7 +82,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Affectations enseignants</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Enseignant</th><th>Classe</th><th>Matière</th><th>Filière</th></tr>

@@ -45,7 +45,7 @@ import { environment } from '../../../environments/environment';
             </button>
           </div>
         </div>
-        <div style="overflow-x:auto">
+        <div class="table-scroll">
           <table class="table">
             <thead>
               <tr><th>Nom</th><th>Type</th><th>Motif</th><th>Concerné</th><th>Date/heure</th><th>Statut</th><th>Actions</th></tr>

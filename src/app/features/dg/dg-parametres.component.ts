@@ -131,7 +131,7 @@ import { AuthService } from '../../core/services/auth.service';
             @if (notifConfigLoading()) {
               <div class="flex items-center gap-2 text-sm text-muted py-6"><span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Chargement...</div>
             } @else {
-              <div style="overflow-x:auto">
+              <div class="table-scroll">
                 <table class="table">
                   <thead>
                     <tr><th>Événement</th><th style="text-align:center">Email</th><th style="text-align:center">WhatsApp</th></tr>

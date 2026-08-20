@@ -13,7 +13,7 @@ export interface TableColumn {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div style="overflow-x:auto">
+    <div class="table-scroll">
       <table class="table">
         <thead>
           <tr>

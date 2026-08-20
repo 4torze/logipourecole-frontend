@@ -69,7 +69,7 @@ interface SeanceDetail {
         <div class="gs-well" style="margin-bottom:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
           <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Matière</div><div style="font-size:14px;font-weight:600">{{ d.matiere?.nom }}</div></div>
           <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Classe</div><div style="font-size:14px;font-weight:600">{{ d.classe?.nom }}</div></div>
-          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Professeur</div><div style="font-size:14px;font-weight:600">{{ d.enseignant?.prenom }} {{ d.enseignant?.nom }}</div></div>
+          <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Enseignant</div><div style="font-size:14px;font-weight:600">{{ d.enseignant?.prenom }} {{ d.enseignant?.nom }}</div></div>
           <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Salle</div><div style="font-size:14px;font-weight:600">{{ d.salle?.nom || '—' }}</div></div>
         </div>
 
@@ -144,7 +144,7 @@ interface SeanceDetail {
                 }
               } @else if (d.professeurAbsent) {
                 <div style="font-size:14px;display:flex;flex-direction:column;gap:6px">
-                  <span class="tag tag-danger" style="width:fit-content">Professeur absent</span>
+                  <span class="tag tag-danger" style="width:fit-content">Enseignant absent</span>
                   <div><strong>Motif :</strong> {{ d.motifAbsence || '—' }}</div>
                   @if (d.justificatifUrl) {
                     <a [href]="fileUrl(d.justificatifUrl)" target="_blank" style="font-size:13px;display:inline-flex;align-items:center;gap:4px">
@@ -180,7 +180,7 @@ interface SeanceDetail {
               @if (d.eleves.length === 0) {
                 <div class="table-empty">Aucun élève inscrit dans cette classe.</div>
               } @else {
-                <div style="overflow-x:auto">
+                <div class="table-scroll">
                   <table class="table">
                     <thead>
                       <tr><th>Élève</th><th style="text-align:center;width:90px">Présent</th><th style="text-align:center;width:90px">Absent</th><th style="text-align:center;width:90px">Retard</th><th>Remarque</th></tr>

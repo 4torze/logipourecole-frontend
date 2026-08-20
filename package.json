@@ -27,6 +27,7 @@
     "ng-zorro-antd": "^17.4.1",
     "ng2-charts": "^5.0.4",
     "rxjs": "~7.8.0",
+    "socket.io-client": "^4.8.3",
     "sweetalert2": "^11.26.25",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"

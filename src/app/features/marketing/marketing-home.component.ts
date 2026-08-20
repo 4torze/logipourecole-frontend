@@ -49,7 +49,7 @@ import { environment } from '../../../environments/environment';
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Conversion par canal</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
             <thead><tr><th>Canal</th><th>Total</th><th>Inscrits</th><th>Taux</th></tr></thead>
             <tbody>
@@ -72,7 +72,7 @@ import { environment } from '../../../environments/environment';
           </button>
         </div>
         <div class="gs-panel-body">
-        <div style="overflow-x:auto">
+        <div class="table-scroll">
           <table class="table">
             <thead><tr><th>Nom</th><th>Prénom</th><th>Poste</th><th>Contact</th><th>Performance</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
@@ -112,7 +112,7 @@ import { environment } from '../../../environments/environment';
           </button>
         </div>
         <div class="gs-panel-body">
-        <div style="overflow-x:auto">
+        <div class="table-scroll">
           <table class="table">
             <thead><tr><th>Titre</th><th>Type</th><th>Période</th><th>Budget</th><th>Statut</th></tr></thead>
             <tbody>

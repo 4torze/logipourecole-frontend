@@ -105,7 +105,7 @@ import { PaginationComponent } from '../../shared/components/pagination.componen
         <div class="gs-panel">
           <div class="gs-panel-head"><h3 style="margin:0;font-size:18px">Paiements récents ({{ paiementsTotal() }})</h3></div>
           <div class="gs-panel-body">
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Date</th><th>Élève</th><th>Classe</th><th>Montant</th><th>Mode</th><th>Reçu</th></tr>

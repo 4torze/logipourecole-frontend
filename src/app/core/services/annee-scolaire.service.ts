@@ -10,6 +10,12 @@ export interface CreateAnneeScolaireDto {
   dateFin: string;
 }
 
+export interface UpdateAnneeScolaireDto {
+  libelle?: string;
+  dateDebut?: string;
+  dateFin?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AnneeScolaireService {
   private http = inject(HttpClient);
@@ -21,5 +27,9 @@ export class AnneeScolaireService {
 
   create(dto: CreateAnneeScolaireDto): Observable<AnneeScolaire> {
     return this.http.post<AnneeScolaire>(this.baseUrl, dto);
+  }
+
+  update(id: string, dto: UpdateAnneeScolaireDto): Observable<AnneeScolaire> {
+    return this.http.patch<AnneeScolaire>(`${this.baseUrl}/${id}`, dto);
   }
 }

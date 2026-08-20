@@ -40,7 +40,7 @@ interface Affectation {
       <div class="gs-panel">
         <div class="gs-panel-head"><h3 style="margin:0;font-size:16px">Devoirs</h3></div>
         <div class="gs-panel-body">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
             <thead>
               <tr><th>Titre</th><th>Description</th><th>Date limite</th><th>Points</th><th>Soumissions</th><th>Actions</th></tr>
@@ -61,7 +61,10 @@ interface Affectation {
                     </div>
                   </td>
                   <td>
-                    <button (click)="remove(d.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button>
+                    <div style="display:flex;gap:4px">
+                      <button (click)="openEditDevoir(d)" class="btn btn-icon btn-secondary" title="Modifier"><span class="material-symbols-outlined" style="font-size:18px">edit</span></button>
+                      <button (click)="remove(d.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button>
+                    </div>
                   </td>
                 </tr>
               } @empty {
@@ -84,7 +87,7 @@ interface Affectation {
           </div>
           <div class="gs-panel-body">
           @if (soumissions().length > 0) {
-            <div style="overflow-x:auto">
+            <div class="table-scroll">
               <table class="table">
                 <thead>
                   <tr><th>Étudiant</th><th>Date</th><th>Contenu</th><th>Note</th><th>Action</th></tr>
@@ -196,6 +199,42 @@ interface Affectation {
       </div>
     }
 
+    <!-- Modal Modifier devoir -->
+    @if (showEditDevoir()) {
+      <div class="dialog-backdrop" (click)="showEditDevoir.set(false)">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h3 class="dialog-title">Modifier le devoir</h3>
+            <button class="btn btn-icon btn-secondary" (click)="showEditDevoir.set(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+          </div>
+          <form (ngSubmit)="saveEditDevoir()" style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <label>Titre</label>
+              <input type="text" [(ngModel)]="editDevoirForm.titre" name="titre" placeholder="Titre" required class="input" />
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <input type="text" [(ngModel)]="editDevoirForm.description" name="description" placeholder="Optionnel" class="input" />
+            </div>
+            <div class="field">
+              <label>Date limite</label>
+              <input type="datetime-local" [(ngModel)]="editDevoirForm.dateLimite" name="dateLimite" required class="input" />
+            </div>
+            <div class="field">
+              <label>Points</label>
+              <input type="number" min="1" [(ngModel)]="editDevoirForm.points" name="points" placeholder="Points" class="input" />
+            </div>
+            <div class="dialog-actions">
+              <button type="button" (click)="showEditDevoir.set(false)" class="btn btn-secondary">Annuler</button>
+              <button type="submit" [disabled]="editSaving()" class="btn btn-primary">
+                @if (editSaving()) { <span class="material-symbols-outlined" style="font-size:14px">progress_activity</span> } Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+
     <!-- Modal Noter la soumission -->
     @if (notingSoumission()) {
       <div class="dialog-backdrop" (click)="cancelNote()">
@@ -240,6 +279,9 @@ export class DevoirsComponent implements OnInit {
   notingSaving = signal(false);
   showFilters = signal(false);
   showCreate = signal(false);
+  showEditDevoir = signal(false);
+  editSaving = signal(false);
+  editDevoirForm: { id: string; titre: string; description: string; dateLimite: string; points: number } = { id: '', titre: '', description: '', dateLimite: '', points: 20 };
   noteForm: { note: number | null; commentaire: string } = { note: null, commentaire: '' };
   private currentSoumissionId = '';
 
@@ -346,6 +388,34 @@ export class DevoirsComponent implements OnInit {
         this.saving.set(false);
         const msg = typeof err?.error?.message === 'string' ? err.error.message : typeof err?.message === 'string' ? err.message : 'Erreur création';
         this.alertService.error(msg);
+      },
+    });
+  }
+
+  openEditDevoir(d: any) {
+    this.editDevoirForm = {
+      id: d.id,
+      titre: d.titre,
+      description: d.description || '',
+      dateLimite: d.dateLimite ? new Date(d.dateLimite).toISOString().slice(0, 16) : '',
+      points: d.points,
+    };
+    this.showEditDevoir.set(true);
+  }
+
+  saveEditDevoir() {
+    this.editSaving.set(true);
+    const { id, ...dto } = this.editDevoirForm;
+    this.devoirService.update(id, dto).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.showEditDevoir.set(false);
+        this.alertService.success('Devoir modifié');
+        this.loadDevoirs();
+      },
+      error: (err: any) => {
+        this.editSaving.set(false);
+        this.alertService.error(err?.message || 'Erreur lors de la modification');
       },
     });
   }

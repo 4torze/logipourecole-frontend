@@ -38,6 +38,22 @@ interface Affectation {
     .gs-seg-btn { padding: 8px 16px; font-size: 13px; font-weight: 600; font-family: var(--font-heading); background: none; border: none; cursor: pointer; color: color-mix(in srgb, var(--color-text) 60%, transparent); }
     .gs-seg-btn.active { background: var(--color-accent); color: var(--color-bg); }
     .gs-seg-btn + .gs-seg-btn { border-left: 1px solid var(--color-divider); }
+
+    /* Vue agenda mobile — bascule pure CSS, pas de détection JS de largeur */
+    .agenda-mobile { display: none; }
+    @media (max-width: 768px) {
+      .cal-desktop { display: none; }
+      .agenda-mobile { display: block; }
+    }
+    .agenda-day-picker { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
+    .agenda-day-btn { flex: none; padding: 10px 14px; min-height: 44px; border: 1px solid var(--color-divider); background: var(--color-surface); font-family: var(--font-heading); font-weight: 600; font-size: 13px; cursor: pointer; text-align: center; }
+    .agenda-day-btn .date { font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--color-text) 55%, transparent); margin-top: 2px; }
+    .agenda-day-btn.today { border-color: var(--color-accent); }
+    .agenda-day-btn.active { background: var(--color-accent); color: var(--color-bg); }
+    .agenda-day-btn.active .date { color: var(--color-bg); opacity: 0.85; }
+    .agenda-event { padding: 14px; margin-bottom: 10px; border: 1px solid var(--color-divider); border-left: 4px solid var(--color-accent); cursor: pointer; background: var(--color-surface); }
+    .agenda-event strong { display: block; font-family: var(--font-heading); font-weight: 800; font-size: 15px; }
+    .agenda-event-meta { font-size: 13px; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin-top: 4px; }
   `],
   template: `
     <div class="page-container" style="max-width:1200px">
@@ -132,7 +148,7 @@ interface Affectation {
       @if (viewMode() === 'calendar') {
         <div class="gs-panel">
           <div class="gs-panel-body">
-            <div class="cal-wrap"><div class="cal-grid">
+            <div class="cal-desktop"><div class="cal-wrap"><div class="cal-grid">
               <div class="cal-header">Heure</div>
               @for (day of jours; track day.value) {
                 <div class="cal-header" [class.today]="isToday(day.value)">{{ day.label }}<div class="date">{{ dateForDay(day.value) }}</div></div>
@@ -154,19 +170,53 @@ interface Affectation {
                   </div>
                 }
               }
-            </div></div>
+            </div></div></div>
+
+            <div class="agenda-mobile">
+              <div class="agenda-day-picker">
+                @for (day of jours; track day.value) {
+                  <button type="button" class="agenda-day-btn" [class.today]="isToday(day.value)" [class.active]="selectedDayMobile() === day.value" (click)="selectedDayMobile.set(day.value)">
+                    {{ day.label }}
+                    <div class="date">{{ dateForDay(day.value) }}</div>
+                  </button>
+                }
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="prevDayMobile()">
+                  <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+                </button>
+                <span style="font-size:13px;font-weight:600">{{ joursLabel[selectedDayMobile()] }} {{ dateForDay(selectedDayMobile()) }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" (click)="nextDayMobile()">
+                  <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                </button>
+              </div>
+              @if (slotsForDay(selectedDayMobile()).length > 0) {
+                @for (slot of slotsForDay(selectedDayMobile()); track slot.id) {
+                  <div class="agenda-event" (click)="openSeance(slot, selectedDayMobile())">
+                    <strong>{{ slot.matiere?.nom }}</strong>
+                    <div class="agenda-event-meta">{{ slot.classe?.nom }} · {{ slot.enseignant?.nom }} {{ slot.enseignant?.prenom }} · {{ slot.heureDebut }} - {{ slot.heureFin }}@if (slot.salle?.nom) {<span> · Salle {{ slot.salle.nom }}</span>}</div>
+                    <span class="tag" [class]="statutClass(slot, selectedDayMobile())" style="margin-top:8px">{{ statutLabel(slot, selectedDayMobile()) }}</span>
+                  </div>
+                }
+              } @else {
+                <div class="table-empty">
+                  <span class="material-symbols-outlined" style="font-size:32px;display:block;margin-bottom:6px;opacity:0.6">event_busy</span>
+                  Aucun créneau ce jour-là
+                </div>
+              }
+            </div>
           </div>
         </div>
       } @else {
         <div class="gs-panel">
-          <div class="gs-panel-body" style="overflow-x:auto">
+          <div class="gs-panel-body table-scroll">
             <table class="table">
               <thead>
                 <tr><th>Jour</th><th>Date</th><th>Heure</th><th>Classe</th><th>Matière</th><th>Enseignant</th><th>Salle</th><th>Statut</th>@if (canEdit()) { <th>Actions</th> }</tr>
               </thead>
               <tbody>
                 @for (slot of edt(); track slot.id) {
-                  <tr>
+                  <tr style="cursor:pointer" (click)="openSeance(slot, slotJour(slot))">
                     <td style="font-weight:600">{{ joursLabel[slot.jourSemaine] }}</td>
                     <td>{{ slot.dateDebut ? (slot.dateDebut | date:'dd/MM/yyyy') : 'Récurrent' }}</td>
                     <td>{{ slot.heureDebut }} - {{ slot.heureFin }}</td>
@@ -175,7 +225,7 @@ interface Affectation {
                     <td>{{ slot.enseignant?.nom }} {{ slot.enseignant?.prenom }}</td>
                     <td>{{ slot.salle?.nom || '—' }}</td>
                     <td><span class="tag" [class]="statutClass(slot, slotJour(slot))">{{ statutLabel(slot, slotJour(slot)) }}</span></td>
-                    @if (canEdit()) { <td><button (click)="remove(slot.id)" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></td> }
+                    @if (canEdit()) { <td><button (click)="remove(slot.id); $event.stopPropagation()" class="btn btn-icon btn-danger" title="Supprimer"><span class="material-symbols-outlined" style="font-size:18px">delete</span></button></td> }
                   </tr>
                 } @empty {
                   <tr><td colspan="9" class="table-empty">Aucun créneau enregistré</td></tr>
@@ -328,6 +378,32 @@ export class EmploiDuTempsComponent implements OnInit {
       const slotStartHour = parseInt((s.heureDebut || '').split(':')[0]);
       return slotStartHour === hourNum;
     });
+  }
+
+  // --- Vue agenda mobile (jour par jour) ---
+  selectedDayMobile = signal<number>(this.defaultMobileDay());
+
+  private defaultMobileDay(): number {
+    const day = new Date().getDay(); // 0=dimanche..6=samedi
+    return day === 0 ? 1 : day;
+  }
+
+  slotsForDay(day: number): any[] {
+    return this.filteredEdt()
+      .filter(s => this.slotJour(s) === day)
+      .sort((a, b) => (a.heureDebut || '').localeCompare(b.heureDebut || ''));
+  }
+
+  prevDayMobile() {
+    const d = this.selectedDayMobile();
+    if (d <= 1) { this.prevWeek(); this.selectedDayMobile.set(6); }
+    else { this.selectedDayMobile.set(d - 1); }
+  }
+
+  nextDayMobile() {
+    const d = this.selectedDayMobile();
+    if (d >= 6) { this.nextWeek(); this.selectedDayMobile.set(1); }
+    else { this.selectedDayMobile.set(d + 1); }
   }
 
   jours = [

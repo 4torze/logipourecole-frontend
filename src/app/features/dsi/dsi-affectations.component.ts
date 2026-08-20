@@ -19,7 +19,7 @@ import { filiereLabel } from '../../core/utils/filiere.util';
           <span class="material-symbols-outlined" style="font-size:18px">add</span> Affecter un enseignant
         </button>
       </div>
-      <div style="overflow-x:auto">
+      <div class="table-scroll">
         <table class="table">
           <thead>
             <tr><th>Enseignant</th><th>Classe</th><th>Matière</th><th>Année</th><th>Actions</th></tr>
